@@ -2,9 +2,13 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { CircularProgress, Container } from '@mui/material';
 import { useAuth } from './contexts/AuthContext';
+import PrivateRoute from './components/auth/PrivateRoute';
+import AuthLayout from './layouts/AuthLayout';
+import MainLayout from './layouts/MainLayout';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import Dashboard from './pages/Dashboard';
+import AuthCallback from './pages/auth/AuthCallback';
 import './App.css';
 
 const App: React.FC = () => {
@@ -20,9 +24,25 @@ const App: React.FC = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={!authState.isAuthenticated ? <Login /> : <Navigate to="/" />} />
-      <Route path="/signup" element={!authState.isAuthenticated ? <Signup /> : <Navigate to="/" />} />
-      <Route path="/" element={authState.isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
+      {/* Auth Routes */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={
+          !authState.isAuthenticated ? <Login /> : <Navigate to="/" replace />
+        } />
+        <Route path="/signup" element={
+          !authState.isAuthenticated ? <Signup /> : <Navigate to="/" replace />
+        } />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+      </Route>
+
+      {/* Protected Routes */}
+      <Route element={<MainLayout />}>
+        <Route path="/" element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        } />
+      </Route>
     </Routes>
   );
 };

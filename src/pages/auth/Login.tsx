@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import {
@@ -13,8 +13,23 @@ import { authStyles } from '../../styles/auth.styles';
 
 const Login: React.FC = () => {
   const [error, setError] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Handle messages from callback
+    if (location.state) {
+      const state = location.state as { message?: string; error?: string };
+      if (state.message) setSuccessMessage(state.message);
+      if (state.error) setError(state.error);
+      // Clean up location state
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
+
+  const from = (location.state as any)?.from?.pathname || '/';
 
   const formik = useFormik({
     initialValues: {
@@ -32,11 +47,21 @@ const Login: React.FC = () => {
     }),
     onSubmit: async (values) => {
       try {
+        setError('');
         const { error } = await signIn(values.email, values.password);
-        if (error) throw error;
-        navigate('/');
+        
+        if (error) {
+          if (error.message.includes('Email not confirmed')) {
+            setError('Please verify your email before logging in.');
+          } else {
+            setError(error.message);
+          }
+          return;
+        }
+        
+        navigate(from, { replace: true });
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message || 'An error occurred during sign in');
       }
     },
   });
@@ -53,6 +78,11 @@ const Login: React.FC = () => {
         {error && (
           <Alert severity="error" sx={{ mt: 2, width: '100%' }}>
             {error}
+          </Alert>
+        )}
+        {successMessage && (
+          <Alert severity="success" sx={{ mt: 2, width: '100%' }}>
+            {successMessage}
           </Alert>
         )}
         <Box component="form" onSubmit={formik.handleSubmit} sx={authStyles.form}>

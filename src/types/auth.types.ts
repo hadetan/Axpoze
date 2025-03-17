@@ -1,3 +1,5 @@
+import { User } from '@supabase/supabase-js';
+
 export interface ILoginForm {
     email: string;
     password: string;
@@ -11,6 +13,11 @@ export interface ISignupForm extends ILoginForm {
 
 export interface IAuthState {
     isAuthenticated: boolean;
-    user: any | null;
+    user: User | null;
     loading: boolean;
 }
+
+export type AuthError = {
+    message: string;
+    status?: number;
+};

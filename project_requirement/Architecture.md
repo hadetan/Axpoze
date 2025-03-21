@@ -1,4 +1,4 @@
-# Money Management System - Architecture
+# Axpoze - Architecture
 
 ## Technical Stack
 

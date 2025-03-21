@@ -9,16 +9,19 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useExpense } from '../../../contexts/ExpenseContext';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { formatCurrency } from '../../../utils/currency';
-import CategoryChip from '../../../components/shared/CategoryChip';
 import { IExpense, IExpenseCategory } from '../../../types/expense.types';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog';
 import CategoryBubble from '../../../components/shared/CategoryBubble';
 
-interface GroupedExpense {
-  categoryId: string;
+interface GroupedExpenseData {
   category: IExpenseCategory | undefined;
   expenses: IExpense[];
   totalAmount: number;
+  monthlyAmount: number;
+}
+
+interface GroupedExpenses {
+  [key: string]: GroupedExpenseData;
 }
 
 interface ExpenseListProps {
@@ -29,30 +32,20 @@ interface ExpenseListProps {
     onRowsPerPageChange: (newRowsPerPage: number) => void;
   };
   onEdit: (expense: IExpense) => void;
+  loading?: boolean;
 }
 
-const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
+const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit, loading }) => {
   const { expenses, deleteExpense } = useExpense();
   const { page, rowsPerPage, onPageChange, onRowsPerPageChange } = pagination;
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; amount: number } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [rowsPerPageState, setRowsPerPageState] = useState(5);
 
-  const filteredExpenses = useMemo(() => {
-    return expenses.sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [expenses]);
-
-  const paginatedExpenses = useMemo(() => {
-    return filteredExpenses.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    );
-  }, [filteredExpenses, page, rowsPerPage]);
-
-  const groupedExpenses = useMemo(() => {
+  const groupedExpenses = useMemo<GroupedExpenses>(() => {
     const currentMonth = new Date();
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -71,7 +64,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
           category: expense.category,
           expenses: [],
           totalAmount: 0,
-          monthlyAmount: 0 // Add monthly total
+          monthlyAmount: 0
         };
       }
 
@@ -81,17 +74,29 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
       }
       acc[categoryId].totalAmount += expense.amount;
       return acc;
-    }, {} as Record<string, { 
-      category: IExpenseCategory | undefined, 
-      expenses: IExpense[], 
-      totalAmount: number,
-      monthlyAmount: number 
-    }>);
+    }, {} as GroupedExpenses);
   }, [expenses]);
 
+  const paginatedExpenses = useMemo(() => {
+    if (!selectedCategory || !groupedExpenses[selectedCategory]) return [];
+    
+    const categoryExpenses = [...groupedExpenses[selectedCategory].expenses]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const startIndex = currentPage * rowsPerPageState;
+    const endIndex = startIndex + rowsPerPageState;
+    
+    return categoryExpenses.slice(startIndex, endIndex);
+  }, [selectedCategory, groupedExpenses, currentPage, rowsPerPageState]);
+
   const sortedCategories = useMemo(() => {
+    // Move Uncategorized to the end of the list if it exists
     return Object.entries(groupedExpenses)
-      .sort((a, b) => b[1].totalAmount - a[1].totalAmount);
+      .sort((a, b) => {
+        if (a[1].category?.name === 'Uncategorized') return 1;
+        if (b[1].category?.name === 'Uncategorized') return -1;
+        return b[1].monthlyAmount - a[1].monthlyAmount;
+      });
   }, [groupedExpenses]);
 
   // Set first category as default selected when sorted categories change
@@ -101,12 +106,18 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
     }
   }, [sortedCategories, selectedCategory]);
 
+  // Reset page when category changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedCategory]);
+
   const handleChangePage = (_: unknown, newPage: number) => {
-    onPageChange(newPage);
+    setCurrentPage(newPage);
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onRowsPerPageChange(parseInt(event.target.value, 10));
+    setRowsPerPageState(parseInt(event.target.value, 10));
+    setCurrentPage(0);
   };
 
   const handleDeleteClick = (expense: IExpense) => {
@@ -159,9 +170,12 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                 end: endOfMonth(new Date()) 
               });
             }).length}
-            onClick={() => setSelectedCategory(
-              selectedCategory === categoryId ? null : categoryId
-            )}
+            onClick={() => {
+              // Only update if selecting a different category
+              if (selectedCategory !== categoryId) {
+                setSelectedCategory(categoryId);
+              }
+            }}
           />
         ))}
       </Box>
@@ -197,7 +211,6 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>Payment Mode</TableCell>
@@ -205,7 +218,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {groupedExpenses[selectedCategory].expenses.map((expense) => (
+                  {paginatedExpenses.map((expense) => (
                     <TableRow 
                       key={expense.id} 
                       hover
@@ -217,9 +230,6 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                     >
                       <TableCell>
                         {format(new Date(expense.date), 'dd MMM yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <CategoryChip category={expense.category} />
                       </TableCell>
                       <TableCell>{expense.description}</TableCell>
                       <TableCell>{formatCurrency(expense.amount)}</TableCell>
@@ -275,6 +285,20 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={selectedCategory ? groupedExpenses[selectedCategory].expenses.length : 0}
+              page={currentPage}
+              rowsPerPage={rowsPerPageState}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              sx={{
+                borderTop: 1,
+                borderColor: 'divider',
+              }}
+            />
           </Paper>
         )}
       </Collapse>
@@ -295,20 +319,6 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
           </Typography>
         </Box>
       )}
-
-      <TablePagination
-        component="div"
-        count={filteredExpenses.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-        sx={{
-          borderTop: 1,
-          borderColor: 'divider',
-        }}
-      />
 
       <ConfirmDialog
         open={!!deleteConfirm}

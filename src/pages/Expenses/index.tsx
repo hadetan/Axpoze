@@ -68,7 +68,17 @@ const Expenses: React.FC = () => {
     }));
   };
 
-  const handleResetFilters = () => {
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(value => 
+      value !== '' && value !== undefined
+    );
+  };
+
+  const handleResetFilters = useCallback(async () => {
+    // Only reset if there are active filters
+    if (!hasActiveFilters()) return;
+
+    // Reset filter states
     setFilters({
       search: '',
       category: '',
@@ -78,8 +88,20 @@ const Expenses: React.FC = () => {
       minAmount: undefined,
       maxAmount: undefined,
     });
+    
+    setAppliedFilters({
+      search: '',
+      category: '',
+      paymentMode: '',
+      startDate: '',
+      endDate: '',
+      minAmount: undefined,
+      maxAmount: undefined,
+    });
+
     setPage(0);
-  };
+    await fetchExpenses();
+  }, [fetchExpenses, filters]);
 
   const handleApplyFilters = useCallback(async (newFilters: FilterValues) => {
     setAppliedFilters(newFilters);

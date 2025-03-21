@@ -1,14 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Container, Grid, Typography, Paper, Box,
   Tab, Tabs, Divider
 } from '@mui/material';
 import CategorySettings from './components/CategorySettings';
 import { useAuth } from '../../contexts/AuthContext';
+import { useExpense } from '../../contexts/ExpenseContext';
 
 const Profile: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState(0);
   const { authState } = useAuth();
+  const { fetchExpenses } = useExpense();
+
+  // Add useEffect to fetch data on mount
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
 
   return (
     <Container maxWidth="lg">

@@ -33,7 +33,7 @@ const validationSchema = Yup.object({
   category_id: Yup.string()
     .required('Please select a category'),
   description: Yup.string()
-    .required('Description is required')
+    .required('Description is required *')
     .min(3, 'Description must be at least 3 characters')
     .max(200, 'Description must not exceed 200 characters')
     .matches(/^[a-zA-Z0-9\s,.!?-]+$/, 'Description contains invalid characters'),
@@ -74,6 +74,22 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
     payment_mode: 'Cash',
   };
 
+  const handleResetAndClose = (resetForm?: (nextState?: Partial<FormikState<IExpenseFormData>>) => void) => {
+    // Remove the timeout and simplify the closing logic
+    if (resetForm) {
+      resetForm({
+        values: {
+          ...initialValues,
+          date: new Date().toISOString().split('T')[0],
+        }
+      });
+    }
+    formik.setTouched({});
+    formik.setErrors({});
+    setError(null);
+    onClose();
+  };
+
   const formik = useFormik<IExpenseFormData>({
     initialValues: expense ? {
       amount: expense.amount,
@@ -96,10 +112,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
           await addExpense(values);
         }
         
-        // Show success feedback before closing
-        setTimeout(() => {
-          handleResetAndClose(resetForm);
-        }, 500);
+        // Remove the timeout here and call handleResetAndClose directly
+        handleResetAndClose(resetForm);
 
       } catch (err: any) {
         if (err.message.includes('category')) {
@@ -114,30 +128,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
     },
   });
 
-  const handleResetAndClose = (resetForm?: (nextState?: Partial<FormikState<IExpenseFormData>>) => void) => {
-    setError(null);
-    
-    // Reset with fresh initial values
-    if (resetForm) {
-      resetForm({
-        values: {
-          ...initialValues,
-          date: new Date().toISOString().split('T')[0], // Always use current date
-        }
-      });
-    }
-
-    // Reset touched and error states
-    formik.setTouched({});
-    formik.setErrors({});
-    
-    // Ensure parent components are notified after state is updated
-    setTimeout(() => {
-      onClose();
-    }, 0);
-  };
-
-  // Reset form when modal is opened/closed
+  // Remove the timeout from useEffect and simplify
   useEffect(() => {
     if (!open) {
       handleResetAndClose(formik.resetForm);
@@ -165,7 +156,22 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const numericValue = parseCurrency(rawValue);
-    formik.setFieldValue('amount', numericValue);
+    
+    // Only update if within limits
+    if (numericValue <= 999999999) {
+      formik.setFieldValue('amount', numericValue);
+    }
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedDate = new Date(e.target.value);
+    const today = new Date();
+    
+    // If selected date is in future, use today's date
+    const adjustedDate = selectedDate > today ? today : selectedDate;
+    const formattedDate = format(adjustedDate, 'yyyy-MM-dd');
+    
+    formik.setFieldValue('date', formattedDate);
   };
 
   // Get today's date in YYYY-MM-DD format for max date
@@ -216,7 +222,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
               <TextField
                 fullWidth
                 name="amount"
-                label="Amount"
+                label="Amount *"
                 type="text"
                 value={formik.values.amount || ''}
                 onChange={handleAmountChange}
@@ -229,10 +235,10 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
                       {currencySymbol}
                     </InputAdornment>
                   ),
-                  inputMode: 'numeric'
-                }}
-                inputProps={{
-                  pattern: '[0-9]*'
+                  inputMode: 'numeric',
+                  inputProps: {
+                    maxLength: 9, // Limit input length
+                  }
                 }}
                 inputRef={amountInputRef}
                 autoFocus={false} // Remove autoFocus prop as we're handling it with ref
@@ -288,19 +294,31 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
 
             <TextField
               fullWidth
+              required
               name="description"
               label="Description"
-              placeholder="Enter expense details"
+              placeholder="Enter expense details (required)"
               multiline
               minRows={3}
               maxRows={5}
               value={formik.values.description}
-              onChange={formik.handleChange}
+              onChange={(e) => {
+                // Limit input to 200 characters
+                if (e.target.value.length <= 200) {
+                  formik.handleChange(e);
+                }
+              }}
               error={formik.touched.description && Boolean(formik.errors.description)}
               helperText={
                 (formik.touched.description && formik.errors.description) ||
-                `${formik.values.description.length}/200 characters`
+                `${formik.values.description.length}/200 characters (required)`
               }
+              inputProps={{
+                maxLength: 200
+              }}
+              InputLabelProps={{
+                required: true
+              }}
               InputProps={{
                 sx: {
                   '& .MuiOutlinedInput-root': {
@@ -334,7 +352,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
                 name="date"
                 label="Date"
                 value={formik.values.date}
-                onChange={formik.handleChange}
+                onChange={handleDateChange}
                 onBlur={formik.handleBlur} // Add this to ensure validation triggers on blur
                 error={formik.touched.date && Boolean(formik.errors.date)}
                 helperText={

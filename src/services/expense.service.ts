@@ -64,7 +64,8 @@ export const expenseService = {
     const { data, error } = await supabase
       .from('expense_categories')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .neq('name', 'Uncategorized'); // Add this line to exclude Uncategorized
 
     if (error) throw error;
     return data || [];

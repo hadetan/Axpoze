@@ -31,6 +31,9 @@ const CategorySettings: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Filter out Uncategorized category from display
+  const visibleCategories = categories.filter(category => category.name !== 'Uncategorized');
+
   const handleEdit = (category: IExpenseCategory) => {
     setEditingCategory(category);
     setOpenModal(true);
@@ -55,8 +58,14 @@ const CategorySettings: React.FC = () => {
     
     setDeleteLoading(true);
     try {
+      // Check if trying to delete Uncategorized
+      const categoryToDelete = categories.find(c => c.id === deleteConfirm);
+      if (categoryToDelete?.name === 'Uncategorized') {
+        throw new Error('Cannot delete the Uncategorized category');
+      }
+
       await categoryService.deleteCategory(deleteConfirm);
-      await fetchExpenses(); // Refresh categories
+      await fetchExpenses(); // Refresh categories and expenses
       setDeleteConfirm(null);
     } catch (error: any) {
       setError(error.message || 'Failed to delete category');
@@ -102,7 +111,7 @@ const CategorySettings: React.FC = () => {
         </Stack>
 
         <List>
-          {categories.map((category) => (
+          {visibleCategories.map((category) => (
             <ListItem
               key={category.id}
               sx={{
@@ -148,7 +157,7 @@ const CategorySettings: React.FC = () => {
           ))}
         </List>
 
-        {categories.length === 0 && (
+        {visibleCategories.length === 0 && (
           <Box
             sx={{
               textAlign: 'center',

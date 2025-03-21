@@ -35,11 +35,58 @@ export const categoryService = {
   },
 
   async deleteCategory(id: string): Promise<void> {
-    const { error } = await supabase
+    // Get the user_id from the category being deleted
+    const { data: categoryToDelete, error: categoryError } = await supabase
+      .from('expense_categories')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (categoryError) throw categoryError;
+
+    // Check for existing Uncategorized category for this user
+    const { data: uncategorized, error: fetchError } = await supabase
+      .from('expense_categories')
+      .select('id')
+      .eq('name', 'Uncategorized')
+      .eq('user_id', categoryToDelete.user_id)
+      .single();
+
+    let uncategorizedId: string;
+
+    if (fetchError) {
+      // Create Uncategorized category if it doesn't exist
+      const { data: newUncategorized, error: createError } = await supabase
+        .from('expense_categories')
+        .insert([{
+          name: 'Uncategorized',
+          color: '#808080',
+          icon: 'default',
+          user_id: categoryToDelete.user_id // Important: Set the user_id
+        }])
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      uncategorizedId = newUncategorized.id;
+    } else {
+      uncategorizedId = uncategorized.id;
+    }
+
+    // Move expenses to Uncategorized category
+    const { error: updateError } = await supabase
+      .from('expenses')
+      .update({ category_id: uncategorizedId })
+      .eq('category_id', id);
+
+    if (updateError) throw updateError;
+
+    // Finally delete the category
+    const { error: deleteError } = await supabase
       .from('expense_categories')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (deleteError) throw deleteError;
   }
 };

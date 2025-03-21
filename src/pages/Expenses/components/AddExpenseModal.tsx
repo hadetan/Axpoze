@@ -39,7 +39,7 @@ const validationSchema = Yup.object({
     .matches(/^[a-zA-Z0-9\s,.!?-]+$/, 'Description contains invalid characters'),
   date: Yup.string()
     .required('Date is required')
-    .test('not-future', 'Date cannot be in the future', (value) => {
+    .test('not-future', 'Living in the future? 🤔 Please select today or a past date', (value) => {
       if (!value) return true;
       return new Date(value) <= new Date();
     })
@@ -167,6 +167,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
     const numericValue = parseCurrency(rawValue);
     formik.setFieldValue('amount', numericValue);
   };
+
+  // Get today's date in YYYY-MM-DD format for max date
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   return (
     <Dialog 
@@ -332,6 +335,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
                 label="Date"
                 value={formik.values.date}
                 onChange={formik.handleChange}
+                onBlur={formik.handleBlur} // Add this to ensure validation triggers on blur
                 error={formik.touched.date && Boolean(formik.errors.date)}
                 helperText={
                   (formik.touched.date && formik.errors.date) ||
@@ -341,9 +345,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <CalendarTodayIcon color="action" />
+                      <CalendarTodayIcon color={formik.errors.date ? 'error' : 'action'} />
                     </InputAdornment>
                   ),
+                  inputProps: {
+                    max: today // Add this line to prevent future dates
+                  }
                 }}
                 sx={{ 
                   flex: 1,
@@ -353,7 +360,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
                     color: theme => 
                       formik.touched.date && formik.errors.date 
                         ? 'error.main' 
-                        : 'text.secondary'
+                        : 'text.secondary',
+                    transition: 'color 0.2s'
                   }
                 }}
                 disabled={formik.isSubmitting}

@@ -1,17 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Chip,
-  TablePagination, Box, Typography, Stack
+  TablePagination, Box, Typography, Stack, Collapse
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useExpense } from '../../../contexts/ExpenseContext';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { formatCurrency } from '../../../utils/currency';
 import CategoryChip from '../../../components/shared/CategoryChip';
 import { IExpense, IExpenseCategory } from '../../../types/expense.types';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog';
+import CategoryBubble from '../../../components/shared/CategoryBubble';
 
 interface GroupedExpense {
   categoryId: string;
@@ -36,6 +37,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; amount: number } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const filteredExpenses = useMemo(() => {
     return expenses.sort((a, b) => 
@@ -51,22 +53,39 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
   }, [filteredExpenses, page, rowsPerPage]);
 
   const groupedExpenses = useMemo(() => {
+    const currentMonth = new Date();
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+
     return expenses.reduce((acc, expense) => {
+      // Only include expenses from current month
+      const expenseDate = new Date(expense.date);
+      const isCurrentMonth = isWithinInterval(expenseDate, { 
+        start: monthStart, 
+        end: monthEnd 
+      });
+
       const categoryId = expense.category_id;
       if (!acc[categoryId]) {
         acc[categoryId] = {
           category: expense.category,
           expenses: [],
-          totalAmount: 0
+          totalAmount: 0,
+          monthlyAmount: 0 // Add monthly total
         };
       }
+
       acc[categoryId].expenses.push(expense);
+      if (isCurrentMonth) {
+        acc[categoryId].monthlyAmount += expense.amount;
+      }
       acc[categoryId].totalAmount += expense.amount;
       return acc;
     }, {} as Record<string, { 
       category: IExpenseCategory | undefined, 
       expenses: IExpense[], 
-      totalAmount: number 
+      totalAmount: number,
+      monthlyAmount: number 
     }>);
   }, [expenses]);
 
@@ -74,6 +93,13 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
     return Object.entries(groupedExpenses)
       .sort((a, b) => b[1].totalAmount - a[1].totalAmount);
   }, [groupedExpenses]);
+
+  // Set first category as default selected when sorted categories change
+  useEffect(() => {
+    if (sortedCategories.length > 0 && !selectedCategory) {
+      setSelectedCategory(sortedCategories[0][0]); // First category's ID
+    }
+  }, [sortedCategories, selectedCategory]);
 
   const handleChangePage = (_: unknown, newPage: number) => {
     onPageChange(newPage);
@@ -108,35 +134,64 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
   };
 
   return (
-    <>
-      <Paper sx={{ width: '100%' }}>
-        {sortedCategories.map(([categoryId, { category, expenses, totalAmount }]) => (
-          <Box 
+    <Stack spacing={3}>
+      {/* Category Bubbles */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 2,
+          p: 2,
+          backgroundColor: 'background.paper',
+          borderRadius: 2,
+        }}
+      >
+        {sortedCategories.map(([categoryId, { category, expenses, monthlyAmount }]) => (
+          <CategoryBubble
             key={categoryId}
+            category={category!}
+            isSelected={selectedCategory === categoryId}
+            totalAmount={monthlyAmount} // Use monthly amount instead of all-time total
+            count={expenses.filter(e => {
+              const expenseDate = new Date(e.date);
+              return isWithinInterval(expenseDate, { 
+                start: startOfMonth(new Date()), 
+                end: endOfMonth(new Date()) 
+              });
+            }).length}
+            onClick={() => setSelectedCategory(
+              selectedCategory === categoryId ? null : categoryId
+            )}
+          />
+        ))}
+      </Box>
+
+      {/* Expense Table */}
+      <Collapse 
+        in={!!selectedCategory} 
+        timeout={300}
+        sx={{
+          transform: 'translateY(-10px)',
+          transition: 'transform 0.3s ease',
+          '&.Mui-expanded': {
+            transform: 'translateY(0)',
+          }
+        }}
+      >
+        {selectedCategory && groupedExpenses[selectedCategory] && (
+          <Paper 
             sx={{ 
-              mb: 3,
-              backgroundColor: theme => category ? `${category.color}08` : 'transparent'
+              width: '100%', 
+              overflow: 'hidden', 
+              borderRadius: 2,
+              backgroundColor: theme => 
+                `${groupedExpenses[selectedCategory].category?.color}08`,
+              borderColor: theme => 
+                `${groupedExpenses[selectedCategory].category?.color}15`,
+              borderWidth: 1,
+              borderStyle: 'solid'
             }}
           >
-            <Box
-              sx={{
-                p: 2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                borderBottom: 1,
-                borderColor: theme => category ? `${category.color}30` : 'divider'
-              }}
-            >
-              <CategoryChip 
-                category={category}
-                size="medium"
-                showAmount={true}
-                amount={totalAmount}
-                count={expenses.length}
-              />
-            </Box>
-            
             <TableContainer>
               <Table>
                 <TableHead>
@@ -150,7 +205,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {expenses.map(expense => (
+                  {groupedExpenses[selectedCategory].expenses.map((expense) => (
                     <TableRow 
                       key={expense.id} 
                       hover
@@ -220,22 +275,40 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
                 </TableBody>
               </Table>
             </TableContainer>
-          </Box>
-        ))}
-        <TablePagination
-          component="div"
-          count={filteredExpenses.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          rowsPerPageOptions={[5, 10, 25, 50]}
+          </Paper>
+        )}
+      </Collapse>
+
+      {!selectedCategory && expenses.length > 0 && (
+        <Box
           sx={{
-            borderTop: 1,
-            borderColor: 'divider',
+            textAlign: 'center',
+            py: 8,
+            color: 'text.secondary'
           }}
-        />
-      </Paper>
+        >
+          <Typography variant="body1" gutterBottom>
+            Select a category to view expenses
+          </Typography>
+          <Typography variant="body2">
+            Click on any category bubble above to see its expenses
+          </Typography>
+        </Box>
+      )}
+
+      <TablePagination
+        component="div"
+        count={filteredExpenses.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        sx={{
+          borderTop: 1,
+          borderColor: 'divider',
+        }}
+      />
 
       <ConfirmDialog
         open={!!deleteConfirm}
@@ -247,7 +320,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit }) => {
         loading={deleteLoading}
         type="danger"
       />
-    </>
+    </Stack>
   );
 };
 

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
+import { ExpenseProvider } from './contexts/ExpenseContext';
 import theme from './theme';
 import './index.css';
 import App from './App';
@@ -16,7 +17,9 @@ root.render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <App />
+          <ExpenseProvider>
+            <App />
+          </ExpenseProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

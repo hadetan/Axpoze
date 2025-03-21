@@ -9,6 +9,8 @@ import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import Dashboard from './pages/Dashboard';
 import AuthCallback from './pages/auth/AuthCallback';
+import Expenses from './pages/Expenses';
+import Profile from './pages/Profile';
 import './App.css';
 
 const App: React.FC = () => {
@@ -40,6 +42,16 @@ const App: React.FC = () => {
         <Route path="/" element={
           <PrivateRoute>
             <Dashboard />
+          </PrivateRoute>
+        } />
+        <Route path="/expenses" element={
+          <PrivateRoute>
+            <Expenses />
+          </PrivateRoute>
+        } />
+        <Route path="/profile" element={
+          <PrivateRoute>
+            <Profile />
           </PrivateRoute>
         } />
       </Route>

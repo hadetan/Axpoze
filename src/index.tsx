@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { ExpenseProvider } from './contexts/ExpenseContext';
+import { SavingsProvider } from './contexts/SavingsContext';
 import theme from './theme';
 import './index.css';
 import App from './App';
@@ -18,7 +19,9 @@ root.render(
         <CssBaseline />
         <AuthProvider>
           <ExpenseProvider>
-            <App />
+            <SavingsProvider>
+              <App />
+            </SavingsProvider>
           </ExpenseProvider>
         </AuthProvider>
       </ThemeProvider>

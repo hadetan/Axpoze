@@ -85,6 +85,20 @@ export const expenseService = {
     return data;
   },
 
+  async createExpense(expense: IExpenseFormData, userId: string): Promise<IExpense> {
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert([{ ...expense, user_id: userId }])
+      .select(`
+        *,
+        category:expense_categories(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
   async updateExpense(expenseId: string, data: Partial<IExpenseFormData>): Promise<IExpense> {
     const { data: updatedExpense, error } = await supabase
       .from('expenses')

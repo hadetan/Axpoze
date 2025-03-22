@@ -5,6 +5,8 @@ import ExpenseBreakdown from './components/ExpenseBreakdown';
 import RecentTransactions from './components/RecentTransactions';
 import MonthlyTrends from './components/MonthlyTrends';
 import QuickActions from './components/QuickActions';
+import MonthlyStats from './components/MonthlyStats';
+import { Stack } from '@mui/material';
 
 const Dashboard: React.FC = () => {
   return (
@@ -17,7 +19,10 @@ const Dashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <Grid item xs={12} md={4}>
-          <QuickActions />
+          <Stack spacing={3}>
+            <QuickActions />
+            <MonthlyStats />
+          </Stack>
         </Grid>
 
         {/* Expense Breakdown */}

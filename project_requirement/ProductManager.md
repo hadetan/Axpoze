@@ -46,6 +46,10 @@
   * Notes
 - Savings history
 - Goal completion tracking
+- Income tracking for variable income users
+- Adaptive savings suggestions based on income trends
+- Savings progress tracking with milestones
+- Alerts for minimum balance or goal completion
 
 ### User Profile (P0)
 
@@ -79,6 +83,9 @@
 - Add saving button
 - Progress tracking
 - Goal visualization
+- Income tracking section
+- Adaptive savings suggestions
+- Alerts for low balance or nearing goal completion
 
 ### 4. Profile Screen
 

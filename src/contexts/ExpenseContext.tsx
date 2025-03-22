@@ -4,6 +4,8 @@ import { expenseService } from '../services/expense.service';
 import { useAuth } from './AuthContext';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { notificationTriggerService } from '../services/notificationTrigger.service';
+import { notificationPreferencesService } from '../services/notificationPreferences.service';
 
 interface ExpenseContextType {
   expenses: IExpense[];
@@ -59,20 +61,18 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [authState.user?.id]);
 
   const addExpense = async (data: IExpenseFormData) => {
-    if (!authState.user?.id) return;
-    
+    if (!authState.user?.id) throw new Error('User not authenticated');
+
     setLoading(true);
     setError(null);
     try {
-      const newExpense = await expenseService.addExpense(data, authState.user.id);
-      // Update expenses list immediately with the new expense at the beginning
-      setExpenses(prev => [
-        {
-          ...newExpense,
-          category: categories.find(c => c.id === newExpense.category_id)
-        },
-        ...prev
-      ]);
+      const newExpense = await expenseService.createExpense(data, authState.user.id);
+      setExpenses(prev => [newExpense, ...prev]);
+
+      // Check expense triggers
+      const preferences = await notificationPreferencesService.getPreferences(authState.user.id);
+      await notificationTriggerService.evaluateExpenseTriggers([newExpense], preferences);
+
       return newExpense;
     } catch (err: any) {
       setError(err.message);

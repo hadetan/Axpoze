@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Box, AppBar, Toolbar, Typography, IconButton,
@@ -11,6 +11,8 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import SavingsIcon from '@mui/icons-material/Savings';
 import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationBell from '../components/shared/NotificationBell';
+import { useNotification } from '../contexts/NotificationContext';
 
 const DRAWER_WIDTH = 240;
 
@@ -24,10 +26,17 @@ const NAV_ITEMS = [
 const MainLayout: React.FC = () => {
   const { signOut } = useAuth();
   const location = useLocation();
+  const { fetchNotifications } = useNotification();
 
   const handleLogout = async () => {
     await signOut();
   };
+
+  // Add fetch notifications on mount
+  useEffect(() => {
+    // Fetch initial notifications
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -36,6 +45,7 @@ const MainLayout: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Axpoze
           </Typography>
+          <NotificationBell />
           <IconButton color="inherit" onClick={handleLogout}>
             <LogoutIcon />
           </IconButton>

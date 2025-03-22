@@ -11,6 +11,9 @@ import Dashboard from './pages/Dashboard';
 import AuthCallback from './pages/auth/AuthCallback';
 import Expenses from './pages/Expenses';
 import Profile from './pages/Profile';
+import Notifications from './pages/Notifications';
+import Savings from './pages/Savings';
+import { AppProvider } from './providers/AppProvider';
 import './App.css';
 
 const App: React.FC = () => {
@@ -25,37 +28,33 @@ const App: React.FC = () => {
   }
 
   return (
-    <Routes>
-      {/* Auth Routes */}
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={
-          !authState.isAuthenticated ? <Login /> : <Navigate to="/" replace />
-        } />
-        <Route path="/signup" element={
-          !authState.isAuthenticated ? <Signup /> : <Navigate to="/" replace />
-        } />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-      </Route>
+    <AppProvider>
+      <Routes>
+        {/* Auth Routes */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={
+            !authState.isAuthenticated ? <Login /> : <Navigate to="/" replace />
+          } />
+          <Route path="/signup" element={
+            !authState.isAuthenticated ? <Signup /> : <Navigate to="/" replace />
+          } />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+        </Route>
 
-      {/* Protected Routes */}
-      <Route element={<MainLayout />}>
+        {/* Protected Routes */}
         <Route path="/" element={
           <PrivateRoute>
-            <Dashboard />
+            <MainLayout />
           </PrivateRoute>
-        } />
-        <Route path="/expenses" element={
-          <PrivateRoute>
-            <Expenses />
-          </PrivateRoute>
-        } />
-        <Route path="/profile" element={
-          <PrivateRoute>
-            <Profile />
-          </PrivateRoute>
-        } />
-      </Route>
-    </Routes>
+        }>
+          <Route index element={<Dashboard />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="savings" element={<Savings />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+      </Routes>
+    </AppProvider>
   );
 };
 

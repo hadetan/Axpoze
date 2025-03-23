@@ -2,109 +2,235 @@ import React, { useState, useMemo } from 'react';
 import {
   Paper, Typography, Stack, Box, Chip,
   IconButton, List, ListItem, ListItemText,
-  LinearProgress, Button, MenuItem, Tooltip, Menu,
-  InputAdornment, TextField
+  LinearProgress, Button, TablePagination,
+  Checkbox, Fade, Alert,
+  Menu, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import SortIcon from '@mui/icons-material/Sort';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { ISavingsGoal, ISavingsHistory } from '../../../types/savings.types';
+import EditIcon from '@mui/icons-material/Edit';
+import { ISavingsGoal, ISavingsHistory, ISavingsHistoryFormData, ISavingsMilestone, ISavingsMilestoneFormData } from '../../../types/savings.types';
 import { useSavings } from '../../../contexts/SavingsContext';
 import { formatCurrency } from '../../../utils/currency';
-import { format, isWithinInterval, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import AddContributionModal from './AddContributionModal';
 import ContributionSummary from './ContributionSummary';
-import ConfirmDialog from '../../../components/ConfirmDialog';
+import ContributionFilters, { ContributionFilters as IContributionFilters } from './ContributionFilters';
+import TablePaginationActions from '../../../components/shared/TablePaginationActions';
+import BulkActionsToolbar from './BulkActionsToolbar';
+import ContributionChart from '../../../components/shared/ContributionChart';
+import SavingsMilestones from './SavingsMilestones';
+import MilestoneAnalytics from '../../../components/shared/MilestoneAnalytics';
+import AchievementCelebration from '../../../components/shared/AchievementCelebration';
 
 interface SavingsHistoryProps {
   goal: ISavingsGoal;
 }
 
-interface FilterState {
-  dateRange: 'all' | '1m' | '3m' | '6m' | '1y';
-  minAmount?: number;
-  maxAmount?: number;
-  search: string;
-}
-
 const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
-  const [openModal, setOpenModal] = useState(false);
-  const { history, loadingHistory, fetchHistory, addContribution, deleteContribution } = useSavings();
+  const { 
+    history, 
+    loadingHistory, 
+    fetchHistory, 
+    addContribution,
+    milestones,  // Remove the default empty array
+    addMilestone,
+    updateMilestone,
+    deleteMilestone,
+    fetchMilestones,
+    deleteContribution // Add this
+  } = useSavings();
   const goalHistory = history[goal.id] || [];
+  const goalMilestones = milestones[goal.id] || []; // Create a variable for goal's milestones
 
-  const [sortAnchor, setSortAnchor] = useState<null | HTMLElement>(null);
-  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [filters, setFilters] = useState<FilterState>({
-    dateRange: 'all',
+  const [filters, setFilters] = useState<IContributionFilters>({
     search: '',
+    dateRange: {
+      start: '',
+      end: '',
+    },
+    amountRange: {
+      min: '',
+      max: '',
+    },
+    sortBy: 'date',
+    sortOrder: 'desc',
+    filterType: 'all', // Add this property
   });
 
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; amount: number } | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [achievedMilestone, setAchievedMilestone] = useState<ISavingsMilestone | null>(null);
+  const [openModal, setOpenModal] = useState(false);
+
+  const filteredHistory = useMemo(() => {
+    let filtered = [...goalHistory];
+
+    // Apply search filter
+    if (filters.search) {
+      filtered = filtered.filter(item => 
+        item.notes?.toLowerCase().includes(filters.search.toLowerCase())
+      );
+    }
+
+    // Apply time period filter
+    switch (filters.filterType) {
+      case 'thisMonth': {
+        const start = startOfMonth(new Date());
+        const end = endOfMonth(new Date());
+        filtered = filtered.filter(item => {
+          const date = new Date(item.date);
+          return date >= start && date <= end;
+        });
+        break;
+      }
+      case 'lastMonth': {
+        const lastMonth = subMonths(new Date(), 1);
+        const start = startOfMonth(lastMonth);
+        const end = endOfMonth(lastMonth);
+        filtered = filtered.filter(item => {
+          const date = new Date(item.date);
+          return date >= start && date <= end;
+        });
+        break;
+      }
+      case 'custom': {
+        // ...existing date range filter code...
+      }
+    }
+
+    // Apply amount range filter
+    if (filters.amountRange.min !== '') {
+      filtered = filtered.filter(item => 
+        item.amount >= Number(filters.amountRange.min)
+      );
+    }
+    if (filters.amountRange.max !== '') {
+      filtered = filtered.filter(item => 
+        item.amount <= Number(filters.amountRange.max)
+      );
+    }
+
+    // Enhanced sorting
+    filtered.sort((a, b) => {
+      let compareValue: number;
+      
+      switch (filters.sortBy) {
+        case 'date':
+          compareValue = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case 'amount':
+          compareValue = a.amount - b.amount;
+          break;
+        case 'notes':
+          compareValue = (a.notes || '').localeCompare(b.notes || '');
+          break;
+        default:
+          compareValue = 0;
+      }
+      
+      return filters.sortOrder === 'asc' ? compareValue : -compareValue;
+    });
+
+    return filtered;
+  }, [goalHistory, filters]);
+
+  const filteredAndPaginatedHistory = useMemo(() => {
+    const startIndex = page * rowsPerPage;
+    return filteredHistory.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredHistory, page, rowsPerPage]);
 
   React.useEffect(() => {
     fetchHistory(goal.id);
-  }, [goal.id, fetchHistory]);
+    fetchMilestones(goal.id); // Add this to fetch milestones
+  }, [goal.id, fetchHistory, fetchMilestones]);
 
   const handleAddContribution = async (data: ISavingsHistoryFormData) => {
-    await addContribution(goal.id, data);
-    setOpenModal(false);
-  };
-
-  const handleDeleteClick = (contribution: ISavingsHistory) => {
-    setDeleteConfirm({
-      id: contribution.id,
-      amount: contribution.amount
-    });
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteConfirm) return;
-    
-    setDeleteLoading(true);
     try {
-      await deleteContribution(goal.id, deleteConfirm.id);
-      setDeleteConfirm(null);
+      await addContribution(goal.id, data);
+      
+      // Check if any milestone was just achieved
+      const latestMilestone = goalMilestones
+        .find(m => !m.achieved && m.target_amount <= goal.current_amount + data.amount);
+      
+      if (latestMilestone) {
+        setAchievedMilestone(latestMilestone);
+      }
+      
+      setOpenModal(false);
     } catch (error) {
-      console.error('Failed to delete contribution:', error);
-    } finally {
-      setDeleteLoading(false);
+      console.error('Failed to add contribution:', error);
     }
   };
 
-  const filteredHistory = useMemo(() => {
-    return goalHistory
-      .filter(contribution => {
-        const date = new Date(contribution.date);
-        const matchesDate = filters.dateRange === 'all' || isWithinInterval(date, {
-          start: subMonths(new Date(), {
-            '1m': 1,
-            '3m': 3,
-            '6m': 6,
-            '1y': 12,
-            'all': 0
-          }[filters.dateRange]),
-          end: new Date()
-        });
+  const handleChangePage = (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+    setPage(newPage);
+  };
 
-        const matchesAmount = (!filters.minAmount || contribution.amount >= filters.minAmount) &&
-                            (!filters.maxAmount || contribution.amount <= filters.maxAmount);
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRowsPerPage(newRowsPerPage);
+    setPage(0); // Reset to first page when changing rows per page
+  };
 
-        const matchesSearch = !filters.search || 
-          contribution.notes?.toLowerCase().includes(filters.search.toLowerCase());
+  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      const newSelected = filteredAndPaginatedHistory.map(item => item.id);
+      setSelected(newSelected);
+      return;
+    }
+    setSelected([]);
+  };
 
-        return matchesDate && matchesAmount && matchesSearch;
-      })
-      .sort((a, b) => {
-        const multiplier = sortOrder === 'asc' ? 1 : -1;
-        if (sortBy === 'date') {
-          return (new Date(a.date).getTime() - new Date(b.date).getTime()) * multiplier;
-        }
-        return (a.amount - b.amount) * multiplier;
-      });
-  }, [goalHistory, sortBy, sortOrder, filters]);
+  const handleSelectOne = (id: string) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected: string[] = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1)
+      );
+    }
+
+    setSelected(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      for (const id of selected) {
+        await deleteContribution(goal.id, id);
+      }
+      setSelected([]);
+    } catch (error) {
+      console.error('Failed to delete contributions:', error);
+    }
+  };
+
+  const handleUpdateMilestone = async (id: string, data: ISavingsMilestoneFormData) => {
+    try {
+      await updateMilestone(id, data);
+    } catch (error) {
+      console.error('Failed to update milestone:', error);
+    }
+  };
+
+  const handleDeleteMilestone = async (id: string) => {
+    try {
+      await deleteMilestone(id);
+    } catch (error) {
+      console.error('Failed to delete milestone:', error);
+    }
+  };
 
   if (loadingHistory) {
     return <LinearProgress />;
@@ -118,89 +244,49 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
         currentAmount={goal.current_amount}
       />
 
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Typography variant="h6" sx={{ flex: 1 }}>
-          Contribution History
-        </Typography>
+      <SavingsMilestones
+        goal={goal}
+        milestones={goalMilestones}
+        history={goalHistory} // Add this prop
+        onAddMilestone={async (data) => {
+          await addMilestone(goal.id, data);
+        }}
+        onUpdateMilestone={handleUpdateMilestone}
+        onDeleteMilestone={handleDeleteMilestone}
+      />
 
-        <TextField
-          size="small"
-          placeholder="Search notes..."
-          value={filters.search}
-          onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-          sx={{ width: 200 }}
-        />
+      <MilestoneAnalytics
+        milestones={goalMilestones}
+        currentAmount={goal.current_amount}
+      />
 
-        <TextField
-          select
-          size="small"
-          value={filters.dateRange}
-          onChange={(e) => setFilters(prev => ({ 
-            ...prev, 
-            dateRange: e.target.value as FilterState['dateRange'] 
-          }))}
-          sx={{ width: 120 }}
-        >
-          <MenuItem value="all">All Time</MenuItem>
-          <MenuItem value="1m">Last Month</MenuItem>
-          <MenuItem value="3m">Last 3 Months</MenuItem>
-          <MenuItem value="6m">Last 6 Months</MenuItem>
-          <MenuItem value="1y">Last Year</MenuItem>
-        </TextField>
+      <ContributionChart 
+        history={goalHistory} 
+        milestones={goalMilestones}
+      />
 
-        <Tooltip title="Sort">
-          <IconButton onClick={(e) => setSortAnchor(e.currentTarget)}>
-            <SortIcon />
-          </IconButton>
-        </Tooltip>
+      <ContributionFilters
+        filters={filters}
+        onFilterChange={setFilters}
+        onReset={() => setFilters({
+          search: '',
+          dateRange: { start: '', end: '' },
+          amountRange: { min: '', max: '' },
+          sortBy: 'date',
+          sortOrder: 'desc',
+          filterType: 'all', // Add this property
+        })}
+        loading={loadingHistory}
+      />
 
-        <Menu
-          anchorEl={sortAnchor}
-          open={Boolean(sortAnchor)}
-          onClose={() => setSortAnchor(null)}
-        >
-          <MenuItem 
-            onClick={() => {
-              setSortBy('date');
-              setSortOrder('desc');
-              setSortAnchor(null);
-            }}
-            selected={sortBy === 'date' && sortOrder === 'desc'}
-          >
-            Newest First
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setSortBy('date');
-              setSortOrder('asc');
-              setSortAnchor(null);
-            }}
-            selected={sortBy === 'date' && sortOrder === 'asc'}
-          >
-            Oldest First
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setSortBy('amount');
-              setSortOrder('desc');
-              setSortAnchor(null);
-            }}
-            selected={sortBy === 'amount' && sortOrder === 'desc'}
-          >
-            Highest Amount
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setSortBy('amount');
-              setSortOrder('asc');
-              setSortAnchor(null);
-            }}
-            selected={sortBy === 'amount' && sortOrder === 'asc'}
-          >
-            Lowest Amount
-          </MenuItem>
-        </Menu>
+      <BulkActionsToolbar
+        numSelected={selected.length}
+        onDelete={handleBulkDelete}
+        onClearSelection={() => setSelected([])}
+      />
 
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography variant="h6">Contribution History</Typography>
         <Button
           startIcon={<AddIcon />}
           onClick={() => setOpenModal(true)}
@@ -212,64 +298,97 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
       </Stack>
 
       <List>
-        {filteredHistory.length > 0 ? (
-          filteredHistory.map((contribution) => (
+        {filteredAndPaginatedHistory.length > 0 ? (
+          <>
             <ListItem
-              key={contribution.id}
-              divider
               sx={{
-                borderRadius: 1,
-                mb: 1,
                 bgcolor: 'background.paper',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                  transform: 'translateX(4px)',
-                }
+                borderBottom: 1,
+                borderColor: 'divider',
               }}
             >
-              <ListItemText
-                primary={
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle2">
-                      {formatCurrency(contribution.amount)}
-                    </Typography>
-                    <Chip
-                      label={format(new Date(contribution.date), 'MMM d, yyyy')}
-                      size="small"
-                      variant="outlined"
-                    />
-                    {contribution.notes && (
-                      <Tooltip title={contribution.notes}>
-                        <Chip
-                          label={contribution.notes}
-                          size="small"
-                          sx={{ 
-                            maxWidth: 200,
-                            '.MuiChip-label': {
-                              overflow: 'hidden',
-                              whiteSpace: 'nowrap',
-                              textOverflow: 'ellipsis'
-                            }
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                  </Stack>
+              <Checkbox
+                indeterminate={
+                  selected.length > 0 && 
+                  selected.length < filteredAndPaginatedHistory.length
                 }
+                checked={
+                  filteredAndPaginatedHistory.length > 0 &&
+                  selected.length === filteredAndPaginatedHistory.length
+                }
+                onChange={handleSelectAllClick}
               />
-
-              <Tooltip title="Delete Contribution">
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => handleDeleteClick(contribution)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <ListItemText 
+                primary="Select All"
+                sx={{ ml: 2 }}
+              />
             </ListItem>
-          ))
+
+            {filteredAndPaginatedHistory.map((contribution) => (
+              <ListItem
+                key={contribution.id}
+                divider
+                sx={{
+                  borderRadius: 1,
+                  mb: 1,
+                  bgcolor: selected.includes(contribution.id) 
+                    ? 'action.selected' 
+                    : 'background.paper',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                    transform: 'translateX(4px)',
+                  }
+                }}
+              >
+                <Checkbox
+                  checked={selected.includes(contribution.id)}
+                  onChange={() => handleSelectOne(contribution.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <ListItemText
+                  primary={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="subtitle2">
+                        {formatCurrency(contribution.amount)}
+                      </Typography>
+                      <Chip
+                        label={format(new Date(contribution.date), 'MMM d, yyyy')}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </Stack>
+                  }
+                  secondary={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {contribution.notes && (
+                        <Typography variant="body2" color="text.secondary">
+                          {contribution.notes}
+                        </Typography>
+                      )}
+                    </Stack>
+                  }
+                />
+              </ListItem>
+            ))}
+            <Box sx={{ mt: 2, borderTop: 1, borderColor: 'divider' }}>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredHistory.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                ActionsComponent={TablePaginationActions}
+                sx={{
+                  '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                    m: 0,
+                  },
+                }}
+              />
+            </Box>
+          </>
         ) : (
           <Box sx={{ 
             textAlign: 'center', 
@@ -293,15 +412,9 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
         onSubmit={handleAddContribution}
       />
 
-      <ConfirmDialog
-        open={!!deleteConfirm}
-        title="Delete Contribution"
-        message={`Are you sure you want to delete this contribution of ${deleteConfirm ? formatCurrency(deleteConfirm.amount) : ''}? This action cannot be undone.`}
-        confirmLabel="Delete"
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteConfirm(null)}
-        loading={deleteLoading}
-        type="danger"
+      <AchievementCelebration
+        milestone={achievedMilestone}
+        onClose={() => setAchievedMilestone(null)}
       />
     </Stack>
   );

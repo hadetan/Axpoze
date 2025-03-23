@@ -17,22 +17,23 @@ export interface INotification {
 
 export interface NotificationTrigger {
   type: NotificationType;
-  condition: {
-    // Goal related triggers
-    goalNearDeadline?: number; // days before deadline
-    goalProgressBelow?: number; // percentage
-    goalAchieved?: boolean;
-    
-    // Expense related triggers
-    expenseAbove?: number;
-    monthlySpendingExceeds?: number;
-    categorySpendingExceeds?: {
-      category_id: string;
-      amount: number;
-    };
-  };
+  condition: TriggerCondition;
   message: string;
   priority: NotificationPriority;
+}
+
+interface TriggerCondition {
+  goalNearDeadline?: number;
+  goalProgressBelow?: number;
+  goalAchieved?: boolean;
+  milestoneAchieved?: boolean;
+  milestoneNearDeadline?: number;
+  expenseAbove?: number;
+  monthlySpendingExceeds?: number;
+  categorySpendingExceeds?: {
+    category_id: string;
+    amount: number;
+  };
 }
 
 export interface INotificationPreferences {

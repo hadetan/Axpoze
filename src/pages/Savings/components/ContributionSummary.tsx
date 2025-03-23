@@ -9,7 +9,6 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import InfoIcon from '@mui/icons-material/Info';
 import { formatCurrency } from '../../../utils/currency';
 import { ISavingsHistory } from '../../../types/savings.types';
-import ContributionChart from '../../../components/shared/ContributionChart';
 
 interface ContributionSummaryProps {
   history: ISavingsHistory[];
@@ -59,23 +58,6 @@ const ContributionSummary: React.FC<ContributionSummaryProps> = ({
         <Typography variant="caption" color="text.secondary">
           {progress.toFixed(1)}% achieved
         </Typography>
-      </Box>
-
-      {/* Add Chart */}
-      <Box sx={{ 
-        bgcolor: 'background.paper',
-        p: 2,
-        borderRadius: 1,
-        border: 1,
-        borderColor: 'divider'
-      }}>
-        <Typography variant="subtitle2" gutterBottom>
-          Progress Over Time
-        </Typography>
-        <ContributionChart 
-          history={history}
-          targetAmount={targetAmount}
-        />
       </Box>
 
       {/* Stats Grid */}

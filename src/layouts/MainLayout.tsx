@@ -13,6 +13,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationBell from '../components/shared/NotificationBell';
 import { useNotification } from '../contexts/NotificationContext';
+import MobileBottomNav from '../components/layout/MobileBottomNav';
 
 const DRAWER_WIDTH = 240;
 
@@ -51,11 +52,14 @@ const MainLayout: React.FC = () => {
           </IconButton>
         </Toolbar>
       </AppBar>
+
+      {/* Desktop Drawer - Hidden on mobile */}
       <Drawer
         variant="permanent"
         sx={{
           width: DRAWER_WIDTH,
           flexShrink: 0,
+          display: { xs: 'none', md: 'block' }, // Hide on mobile
           '& .MuiDrawer-paper': {
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
@@ -80,10 +84,21 @@ const MainLayout: React.FC = () => {
           </List>
         </Box>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          p: 3,
+          pb: { xs: 7, md: 3 }, // Add padding for mobile bottom nav
+          width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` }
+        }}
+      >
         <Toolbar /> {/* This creates space for the AppBar */}
         <Outlet />
       </Box>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </Box>
   );
 };

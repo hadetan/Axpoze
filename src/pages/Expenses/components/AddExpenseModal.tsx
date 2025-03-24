@@ -14,6 +14,7 @@ import { currencySymbol, parseCurrency } from '../../../utils/currency';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { format } from 'date-fns';
+import { colors } from '../../../theme/colors';
 
 interface AddExpenseModalProps {
   open: boolean;
@@ -447,7 +448,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
             disabled={!formik.isValid || !formik.dirty || formik.isSubmitting}
             sx={{
               minWidth: 120,
-              px: 3
+              px: 3,
+              bgcolor: colors.primary.main,
+              '&:hover': {
+                bgcolor: colors.primary.dark
+              }
             }}
           >
             {formik.isSubmitting ? 'Saving...' : expense ? 'Update Expense' : 'Save Expense'}

@@ -1,5 +1,7 @@
-import React from 'react';
-import { Grid, Container } from '@mui/material';
+import React, { useEffect } from 'react';
+import { Grid, Container, CircularProgress, Box } from '@mui/material';
+import { useExpense } from '../../contexts/ExpenseContext';
+import { useSavings } from '../../contexts/SavingsContext';
 import OverviewCards from './components/OverviewCards';
 import ExpenseBreakdown from './components/ExpenseBreakdown';
 import RecentTransactions from './components/RecentTransactions';
@@ -10,6 +12,33 @@ import { Stack } from '@mui/material';
 import FinancialInsights from './components/FinancialInsights';
 
 const Dashboard: React.FC = () => {
+  const { fetchExpenses, loading: expensesLoading } = useExpense();
+  const { fetchGoals, loading: savingsLoading } = useSavings();
+
+  useEffect(() => {
+    const initializeDashboard = async () => {
+      await Promise.all([
+        fetchExpenses(),
+        fetchGoals()
+      ]);
+    };
+
+    initializeDashboard();
+  }, [fetchExpenses, fetchGoals]);
+
+  if (expensesLoading || savingsLoading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '400px' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>

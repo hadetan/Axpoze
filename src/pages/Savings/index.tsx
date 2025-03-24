@@ -10,6 +10,7 @@ import SavingsOverview from './components/SavingsOverview';
 import AddSavingsGoalModal from './components/AddSavingsGoalModal';
 import ErrorAlert from '../../components/shared/ErrorAlert';
 import { ISavingsGoal } from '../../types/savings.types';
+import { colors } from '../../theme/colors';
 
 const Savings: React.FC = () => {
   const { goals, loading, error, fetchGoals } = useSavings();
@@ -38,11 +39,26 @@ const Savings: React.FC = () => {
     <Container maxWidth="lg">
       <Stack spacing={3}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">Savings Goals</Typography>
+          <Typography 
+            variant="h4" 
+            gutterBottom
+            sx={{ 
+              color: colors.primary.main,
+              mb: 3
+            }}
+          >
+            Savings Goals
+          </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleAddGoal}
+            sx={{ 
+              bgcolor: colors.primary.main,
+              '&:hover': {
+                bgcolor: colors.primary.dark
+              }
+            }}
           >
             Add Goal
           </Button>

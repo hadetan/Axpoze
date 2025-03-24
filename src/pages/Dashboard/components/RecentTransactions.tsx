@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { 
   Paper, Typography, List, ListItem, ListItemText, 
   ListItemIcon, Box, Chip, CircularProgress,
@@ -11,6 +11,7 @@ import { formatCurrency } from '../../../utils/currency';
 import { useNavigate } from 'react-router-dom';
 import SavingsIcon from '@mui/icons-material/Savings';
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import { colors } from '../../../theme/colors';
 
 interface Transaction {
   id: string;
@@ -25,8 +26,19 @@ interface Transaction {
 
 const RecentTransactions: React.FC = () => {
   const { expenses, categories, loading: expenseLoading } = useExpense();
-  const { history: savingsHistory, goals, loading: savingsLoading } = useSavings();
+  const { goals, history: savingsHistory, loading: savingsLoading, fetchHistory } = useSavings();
   const navigate = useNavigate();
+
+  // Add this effect to fetch savings history for all goals
+  useEffect(() => {
+    const loadSavingsHistory = async () => {
+      await Promise.all(goals.map(goal => fetchHistory(goal.id)));
+    };
+    
+    if (goals.length > 0) {
+      loadSavingsHistory();
+    }
+  }, [goals, fetchHistory]);
 
   const transactions = useMemo<Transaction[]>(() => {
     const expenseTransactions: Transaction[] = expenses.map(expense => ({
@@ -138,7 +150,7 @@ const RecentTransactions: React.FC = () => {
                   <ReceiptIcon />
                 </Box>
               ) : (
-                <SavingsIcon color="primary" />
+                <SavingsIcon sx={{ color: colors.primary.main }} />
               )}
             </ListItemIcon>
             <ListItemText
@@ -174,9 +186,12 @@ const RecentTransactions: React.FC = () => {
                     <Chip 
                       label={transaction.goalName} 
                       size="small"
-                      color="primary"
-                      variant="outlined"
-                      sx={{ borderRadius: 1 }}
+                      sx={{ 
+                        borderRadius: 1,
+                        color: colors.primary.main,
+                        borderColor: colors.primary.main,
+                        bgcolor: colors.primary.alpha[8]
+                      }}
                     />
                   )}
                 </Box>

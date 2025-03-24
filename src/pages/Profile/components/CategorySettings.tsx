@@ -13,6 +13,7 @@ import { IExpenseCategory } from '../../../types/expense.types';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog';
 import { categoryService } from '../../../services/category.service';
 import ErrorAlert from '../../../components/shared/ErrorAlert';
+import { colors } from '../../../theme/colors';
 
 interface CategorySettingsState {
   openModal: boolean;
@@ -84,7 +85,7 @@ const CategorySettings: React.FC = () => {
 
   return (
     <>
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 } }}>
         {error && (
           <ErrorAlert
             error={error}
@@ -92,12 +93,30 @@ const CategorySettings: React.FC = () => {
             onError={handleError}
           />
         )}
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+        <Stack 
+          direction={{ xs: 'column', sm: 'row' }} 
+          alignItems={{ xs: 'stretch', sm: 'center' }} 
+          justifyContent="space-between" 
+          mb={3}
+          spacing={2}
+        >
           <Box>
-            <Typography variant="h6" gutterBottom>
+            <Typography 
+              variant="h6" 
+              gutterBottom
+              sx={{ 
+                color: colors.primary.main,
+                fontSize: { xs: '1.125rem', sm: '1.25rem' },
+                textAlign: { xs: 'center', sm: 'left' }
+              }}
+            >
               Expense Categories
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ textAlign: { xs: 'center', sm: 'left' } }}
+            >
               Manage your expense categories and their colors
             </Typography>
           </Box>
@@ -105,54 +124,96 @@ const CategorySettings: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleAdd}
+            sx={{ 
+              bgcolor: colors.primary.main,
+              '&:hover': {
+                bgcolor: colors.primary.dark
+              },
+              minHeight: { xs: 45, sm: 'auto' },
+              alignSelf: { xs: 'stretch', sm: 'auto' }
+            }}
           >
             Add Category
           </Button>
         </Stack>
 
-        <List>
+        <List sx={{ 
+          mx: { xs: -2, sm: 0 },  // Negative margin on mobile to extend list items
+          px: { xs: 2, sm: 0 } 
+        }}>
           {visibleCategories.map((category) => (
             <ListItem
               key={category.id}
               sx={{
-                borderRadius: 1,
+                borderRadius: { xs: 0, sm: 1 }, // No border radius on mobile
                 mb: 1,
                 border: 1,
                 borderColor: 'divider',
+                px: { xs: 2, sm: 3 },
+                py: { xs: 2, sm: 2 },
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 1, sm: 0 },
                 '&:hover': {
-                  backgroundColor: 'action.hover',
+                  bgcolor: colors.primary.alpha[8],
                 }
               }}
             >
-              <Box
-                sx={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  backgroundColor: category.color,
-                  mr: 2,
-                  border: 1,
-                  borderColor: `${category.color}50`,
-                }}
-              />
-              <ListItemText 
-                primary={category.name}
-                secondary={`${category.color}`}
-              />
-              <IconButton
-                size="small"
-                onClick={() => handleEdit(category)}
-                sx={{ mr: 1 }}
+              <Stack 
+                direction="row" 
+                alignItems="center" 
+                spacing={2}
+                width="100%"
               >
-                <EditIcon />
-              </IconButton>
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => handleDelete(category.id)}
-              >
-                <DeleteIcon />
-              </IconButton>
+                <Box
+                  sx={{
+                    width: { xs: 32, sm: 24 },
+                    height: { xs: 32, sm: 24 },
+                    borderRadius: '50%',
+                    backgroundColor: category.color,
+                    border: 1,
+                    borderColor: `${category.color}50`,
+                  }}
+                />
+                <ListItemText 
+                  primary={
+                    <Typography variant="subtitle2">
+                      {category.name}
+                    </Typography>
+                  }
+                  secondary={category.color}
+                  sx={{
+                    m: 0,
+                    flex: 1
+                  }}
+                />
+                <Stack 
+                  direction="row" 
+                  spacing={1}
+                  sx={{
+                    mt: { xs: 1, sm: 0 }
+                  }}
+                >
+                  <IconButton
+                    size="small"
+                    onClick={() => handleEdit(category)}
+                    sx={{ 
+                      color: colors.primary.main,
+                      '&:hover': {
+                        bgcolor: colors.primary.alpha[12]
+                      }
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => handleDelete(category.id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Stack>
+              </Stack>
             </ListItem>
           ))}
         </List>
@@ -161,9 +222,11 @@ const CategorySettings: React.FC = () => {
           <Box
             sx={{
               textAlign: 'center',
-              py: 4,
+              py: { xs: 6, sm: 8 },
+              px: { xs: 2, sm: 3 },
               backgroundColor: 'action.hover',
-              borderRadius: 1,
+              borderRadius: { xs: 0, sm: 1 },
+              mx: { xs: -2, sm: 0 }
             }}
           >
             <Typography color="text.secondary" gutterBottom>
@@ -173,7 +236,11 @@ const CategorySettings: React.FC = () => {
               variant="outlined"
               startIcon={<AddIcon />}
               onClick={handleAdd}
-              sx={{ mt: 1 }}
+              sx={{ 
+                mt: 2,
+                minHeight: { xs: 45, sm: 'auto' },
+                minWidth: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add Your First Category
             </Button>

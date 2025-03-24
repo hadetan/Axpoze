@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  transition: background-color 0.2s ease;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Add smooth transitions for theme changes */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}

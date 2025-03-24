@@ -19,6 +19,7 @@ interface SavingsContextType {
   addContribution: (goalId: string, data: ISavingsHistoryFormData) => Promise<void>;
   fetchHistory: (goalId: string) => Promise<void>;
   deleteContribution: (goalId: string, contributionId: string) => Promise<void>;
+  fetchSavings: () => Promise<void>; // Add this line
 }
 
 const SavingsContext = createContext<SavingsContextType | null>(null);
@@ -172,6 +173,11 @@ export const SavingsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const fetchSavings = useCallback(async () => {
+    if (!authState.user?.id) return;
+    await fetchGoals();
+  }, [fetchGoals]);
+
   return (
     <SavingsContext.Provider value={{
       goals,
@@ -185,7 +191,8 @@ export const SavingsProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loadingHistory,
       addContribution,
       fetchHistory,
-      deleteContribution
+      deleteContribution,
+      fetchSavings, // Add this line
     }}>
       {children}
     </SavingsContext.Provider>

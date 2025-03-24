@@ -40,7 +40,14 @@ const MainLayout: React.FC = () => {
   }, [fetchNotifications]);
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        transition: 'background-color 0.2s ease',
+        display: 'flex'
+      }}
+    >
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>

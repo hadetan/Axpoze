@@ -12,6 +12,7 @@ import LoadingButton from '@mui/lab/LoadingButton';
 import { useExpense } from '../../../contexts/ExpenseContext';
 import { PaymentMode } from '../../../types/expense.types';
 import { format } from 'date-fns';
+import { colors } from '../../../theme/colors';
 
 export interface FilterValues {
   search: string;
@@ -365,7 +366,15 @@ const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
           onClick={handleReset}
           startIcon={<FilterAltOffIcon />}
           disabled={disabled}
-          sx={{ minHeight: { xs: 45, sm: 'auto' } }}
+          sx={{ 
+            minHeight: { xs: 45, sm: 'auto' },
+            borderColor: colors.primary.main,
+            color: colors.primary.main,
+            '&:hover': {
+              borderColor: colors.primary.dark,
+              bgcolor: colors.primary.alpha[8]
+            }
+          }}
         >
           Reset
         </Button>

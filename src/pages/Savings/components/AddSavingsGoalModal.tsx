@@ -12,6 +12,7 @@ import { useSavings } from '../../../contexts/SavingsContext';
 import { ISavingsFormData, SavingType, ISavingsGoal } from '../../../types/savings.types';
 import ErrorAlert from '../../../components/shared/ErrorAlert';
 import { parseCurrency, formatCurrency } from '../../../utils/currency';
+import { colors } from '../../../theme/colors';
 
 interface AddSavingsGoalModalProps {
   open: boolean;
@@ -280,9 +281,14 @@ const AddSavingsGoalModal: React.FC<AddSavingsGoalModalProps> = ({ open, onClose
             loading={formik.isSubmitting}
             loadingPosition="start"
             startIcon={<SaveIcon />}
-            disabled={!formik.isValid || !formik.dirty}
+            sx={{ 
+              bgcolor: colors.primary.main,
+              '&:hover': {
+                bgcolor: colors.primary.dark
+              }
+            }}
           >
-            Save Goal
+            {goal ? 'Update Goal' : 'Create Goal'}
           </LoadingButton>
         </DialogActions>
       </form>

@@ -18,6 +18,7 @@ import AddExpenseModal from './components/AddExpenseModal';
 import ErrorAlert from '../../components/shared/ErrorAlert';
 import { IExpense } from '../../types/expense.types';
 import { useLocation } from 'react-router-dom';
+import { colors } from '../../theme/colors';
 
 interface ExpensePagination {
   page: number;
@@ -281,7 +282,8 @@ const Expenses: React.FC = () => {
             variant="h4" 
             sx={{ 
               fontSize: { xs: '1.5rem', sm: '2rem' },
-              textAlign: { xs: 'center', sm: 'left' }
+              textAlign: { xs: 'center', sm: 'left' },
+              color: colors.primary.main  // Add this line
             }}
           >
             Expenses

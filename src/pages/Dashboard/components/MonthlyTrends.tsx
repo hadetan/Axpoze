@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Paper, Typography, Box, CircularProgress } from '@mui/material';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -11,10 +11,23 @@ import {
   format, isSameMonth, parseISO 
 } from 'date-fns';
 import { formatCurrency } from '../../../utils/currency';
+import SavingsHistory from '../../Savings/components/SavingsHistory';
+import { colors } from '../../../theme/colors';
 
 const MonthlyTrends: React.FC = () => {
   const { expenses, loading: expenseLoading } = useExpense();
-  const { history: savingsHistory, loading: savingsLoading } = useSavings();
+  const { goals, history, loading: savingsLoading, fetchHistory } = useSavings();
+
+  // Fetch savings history for all goals
+  useEffect(() => {
+    const loadSavingsHistory = async () => {
+      await Promise.all(goals.map(goal => fetchHistory(goal.id)));
+    };
+    
+    if (goals.length > 0) {
+      loadSavingsHistory();
+    }
+  }, [goals, fetchHistory]);
 
   const chartData = useMemo(() => {
     // Get last 6 months including current month
@@ -28,7 +41,7 @@ const MonthlyTrends: React.FC = () => {
       };
     }).reverse();
 
-    return months.map(({ date, month, startDate, endDate }) => {
+    return months.map(({ date, month }) => {
       // Calculate expenses for the month
       const monthlyExpenses = expenses.filter(expense => {
         const expenseDate = parseISO(expense.date);
@@ -36,7 +49,7 @@ const MonthlyTrends: React.FC = () => {
       }).reduce((sum, exp) => sum + exp.amount, 0);
 
       // Calculate savings contributions for the month
-      const monthlySavings = Object.values(savingsHistory)
+      const monthlySavings = Object.values(history)
         .flat()
         .filter(contribution => {
           const contribDate = parseISO(contribution.date);
@@ -54,7 +67,7 @@ const MonthlyTrends: React.FC = () => {
         Savings: monthlySavings || 0
       };
     });
-  }, [expenses, savingsHistory]);
+  }, [expenses, history]);
 
   if (expenseLoading || savingsLoading) {
     return (
@@ -144,22 +157,22 @@ const MonthlyTrends: React.FC = () => {
               type="monotone"
               dataKey="Income"
               stackId="1"
-              stroke="#4caf50"
-              fill="#4caf5020"
+              stroke={colors.income.main}
+              fill={colors.income.light}
             />
             <Area
               type="monotone"
               dataKey="Expenses"
               stackId="2"
-              stroke="#f44336"
-              fill="#f4433620"
+              stroke={colors.expense.main}
+              fill={colors.expense.light}
             />
             <Area
               type="monotone"
               dataKey="Savings"
               stackId="3"
-              stroke="#1976d2"
-              fill="#1976d220"
+              stroke={colors.primary.main}
+              fill={colors.primary.alpha[12]}
             />
           </AreaChart>
         </ResponsiveContainer>

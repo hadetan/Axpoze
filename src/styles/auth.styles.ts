@@ -15,6 +15,7 @@ export const authStyles: Record<string, SxProps> = {
     alignItems: 'center',
     maxWidth: 400,
     width: '100%',
+    bgcolor: 'background.paper',
   },
   avatar: {
     m: 1,

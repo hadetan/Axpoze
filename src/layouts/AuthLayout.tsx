@@ -8,7 +8,7 @@ const AuthLayout: React.FC = () => {
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      bgcolor: 'grey.100'
+      bgcolor: 'background.default'
     }}>
       <Outlet />
     </Box>

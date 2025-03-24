@@ -2,8 +2,19 @@ import React from 'react';
 import { Paper, Button, Stack, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SavingsIcon from '@mui/icons-material/Savings';
+import { useNavigate } from 'react-router-dom';
 
 const QuickActions: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleAddExpense = () => {
+    navigate('/expenses', { state: { openAddModal: true } });
+  };
+
+  const handleAddSavings = () => {
+    navigate('/savings', { state: { openAddModal: true } });
+  };
+
   return (
     <Paper sx={{ p: 2 }}>
       <Typography variant="h6" gutterBottom>
@@ -14,6 +25,7 @@ const QuickActions: React.FC = () => {
           variant="contained"
           startIcon={<AddIcon />}
           fullWidth
+          onClick={handleAddExpense}
         >
           Add Expense
         </Button>
@@ -21,6 +33,7 @@ const QuickActions: React.FC = () => {
           variant="outlined"
           startIcon={<SavingsIcon />}
           fullWidth
+          onClick={handleAddSavings}
         >
           Add Savings
         </Button>

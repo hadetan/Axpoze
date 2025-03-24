@@ -150,11 +150,22 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit, loading }
       <Box
         sx={{
           display: 'flex',
-          flexWrap: 'wrap',
           gap: 2,
           p: 2,
           backgroundColor: 'background.paper',
           borderRadius: 2,
+          overflow: 'auto',
+          flexWrap: { xs: 'nowrap', sm: 'wrap' }, // No wrap on mobile, wrap on desktop
+          whiteSpace: 'nowrap',
+          mx: { xs: -0.5, sm: 0 },
+          px: { xs: 0.5, sm: 2 },
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          },
+          WebkitOverflowScrolling: 'touch',
+          msOverflowStyle: 'none',
+          minHeight: 'fit-content'
         }}
       >
         {sortedCategories.map(([categoryId, { category, expenses, monthlyAmount }]) => (
@@ -162,7 +173,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit, loading }
             key={categoryId}
             category={category!}
             isSelected={selectedCategory === categoryId}
-            totalAmount={monthlyAmount} // Use monthly amount instead of all-time total
+            totalAmount={monthlyAmount}
             count={expenses.filter(e => {
               const expenseDate = new Date(e.date);
               return isWithinInterval(expenseDate, { 
@@ -171,11 +182,11 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ pagination, onEdit, loading }
               });
             }).length}
             onClick={() => {
-              // Only update if selecting a different category
               if (selectedCategory !== categoryId) {
                 setSelectedCategory(categoryId);
               }
             }}
+            sx={{ flexShrink: 0 }} // Prevent shrinking of bubbles
           />
         ))}
       </Box>

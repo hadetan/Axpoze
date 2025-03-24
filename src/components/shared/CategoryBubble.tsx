@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Collapse, Paper } from '@mui/material';
+import { Box, Typography, Collapse, Paper, SxProps, Theme } from '@mui/material';
 import { IExpenseCategory } from '../../types/expense.types';
 
 interface CategoryBubbleProps {
@@ -8,6 +8,7 @@ interface CategoryBubbleProps {
   totalAmount: number;
   count: number;
   onClick: () => void;
+  sx?: SxProps<Theme>; // Add this line to support style props
 }
 
 const CategoryBubble: React.FC<CategoryBubbleProps> = ({
@@ -16,6 +17,7 @@ const CategoryBubble: React.FC<CategoryBubbleProps> = ({
   totalAmount,
   count,
   onClick,
+  sx // Add this to props
 }) => {
   return (
     <Paper
@@ -41,7 +43,8 @@ const CategoryBubble: React.FC<CategoryBubbleProps> = ({
         '&:hover': {
           backgroundColor: `${category.color}15`,
           borderColor: `${category.color}50`,
-        }
+        },
+        ...sx // Spread additional styles
       }}
     >
       <Box

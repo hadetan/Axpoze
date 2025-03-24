@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, MenuItem, Stack, InputAdornment, Box
@@ -62,7 +62,6 @@ const PAYMENT_MODES: { value: PaymentMode; label: string; icon: string }[] = [
 ];
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expense }) => {
-  const amountInputRef = useRef<HTMLInputElement>(null);
   const { categories, addExpense, updateExpense } = useExpense();
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +74,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
   };
 
   const handleResetAndClose = (resetForm?: (nextState?: Partial<FormikState<IExpenseFormData>>) => void) => {
-    // Remove the timeout and simplify the closing logic
+    setError(null);
     if (resetForm) {
       resetForm({
         values: {
@@ -84,10 +83,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
         }
       });
     }
-    formik.setTouched({});
-    formik.setErrors({});
-    setError(null);
+    formik.setTouched({}); // Clear touched state
+    formik.setErrors({}); // Clear errors
     onClose();
+  };
+
+  const handleClose = () => {
+    // Remove validation check and directly close
+    if (formik.isSubmitting) return;
+    handleResetAndClose(formik.resetForm);
   };
 
   const formik = useFormik<IExpenseFormData>({
@@ -134,24 +138,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
       handleResetAndClose(formik.resetForm);
     }
   }, [open]);
-
-  // Focus amount field when modal opens
-  useEffect(() => {
-    if (open) {
-      // Small delay to ensure modal is fully rendered
-      setTimeout(() => {
-        amountInputRef.current?.focus();
-        // Select any existing text
-        amountInputRef.current?.select();
-      }, 100);
-    }
-  }, [open]);
-
-  const handleClose = () => {
-    // Prevent closing while submitting
-    if (formik.isSubmitting) return;
-    handleResetAndClose(formik.resetForm);
-  };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
@@ -240,9 +226,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ open, onClose, expens
                     maxLength: 9, // Limit input length
                   }
                 }}
-                inputRef={amountInputRef}
                 autoFocus={false} // Remove autoFocus prop as we're handling it with ref
-                onFocus={(e) => e.target.select()} // Select text when focused
                 sx={{
                   flex: 1,
                   '& .MuiOutlinedInput-root': {

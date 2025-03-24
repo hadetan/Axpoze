@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Paper, Stack, TextField, MenuItem, Box,
-  InputAdornment, Button, Typography
+  InputAdornment, Button, Typography, Chip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
@@ -105,219 +105,281 @@ const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
   const today = format(new Date(), 'yyyy-MM-dd');
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Stack spacing={3}>
-        {/* First Row: Search and Payment Mode */}
-        <Stack 
-          direction={{ xs: 'column', sm: 'row' }} 
-          spacing={2}
-          alignItems="flex-start"
-        >
-          <TextField
-            name="search"
-            label="Search expenses"
-            placeholder="Search by description..."
+    <Paper sx={{ 
+      p: { xs: 1.5, sm: 2 },
+      display: 'flex',
+      flexDirection: 'column',
+      gap: { xs: 1.5, sm: 2 }
+    }}>
+      {/* Mobile Category Capsules */}
+      <Box
+        sx={{
+          display: { xs: 'flex', sm: 'none' },
+          gap: 1,
+          overflowX: 'auto',
+          mx: -1.5, // Compensate for padding
+          px: 1.5,
+          pb: 1,
+          scrollbarWidth: 'none', // Firefox
+          '&::-webkit-scrollbar': { display: 'none' }, // Chrome/Safari
+          WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+        }}
+      >
+        <Chip
+          label="All Categories"
+          size="small"
+          color={!localFilters.category ? "primary" : "default"}
+          onClick={() => {
+            handleChange({ 
+              target: { name: 'category', value: '' } 
+            } as React.ChangeEvent<HTMLInputElement>);
+          }}
+          sx={{ flexShrink: 0 }}
+        />
+        {categories.map(category => (
+          <Chip
+            key={category.id}
+            label={category.name}
             size="small"
-            value={localFilters.search}
-            onChange={handleChange}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+            color={localFilters.category === category.id ? undefined : "default"}
+            onClick={() => {
+              handleChange({ 
+                target: { name: 'category', value: category.id } 
+              } as React.ChangeEvent<HTMLInputElement>);
             }}
-            sx={{ 
-              flex: { sm: 2 },
-              minWidth: { xs: '100%', sm: 300 }
+            sx={{
+              bgcolor: localFilters.category === category.id ? `${category.color}20` : undefined,
+              color: localFilters.category === category.id ? category.color : undefined,
+              borderColor: localFilters.category === category.id ? category.color : undefined,
+              flexShrink: 0
             }}
-            disabled={disabled}
           />
-          
+        ))}
+      </Box>
+
+      <Stack 
+        direction={{ xs: 'column', sm: 'row' }} 
+        spacing={{ xs: 1.5, sm: 2 }}
+      >
+        {/* Search Field */}
+        <TextField
+          name="search"
+          label="Search expenses"
+          placeholder="Search by description..."
+          size="small"
+          value={localFilters.search}
+          onChange={handleChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ 
+            flex: 2,
+            minWidth: { xs: '100%', sm: 250 }
+          }}
+          disabled={disabled}
+        />
+
+        {/* Category Select - Only visible on desktop */}
+        <Box sx={{ display: { xs: 'none', sm: 'block' }, flex: 1 }}>
           <TextField
             select
-            name="paymentMode"
-            label="Payment Mode"
+            name="category"
+            label="Category"
             size="small"
-            value={localFilters.paymentMode}
+            value={localFilters.category}
             onChange={handleChange}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PaymentIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ 
-              flex: { sm: 1 },
-              minWidth: { xs: '100%', sm: 200 }
-            }}
+            fullWidth
             disabled={disabled}
           >
-            <MenuItem value="">All Payment Modes</MenuItem>
-            {PAYMENT_MODES.map(mode => (
-              <MenuItem 
-                key={mode.value} 
-                value={mode.value}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  py: 1
-                }}
-              >
-                <Box component="span" sx={{ fontSize: '1.2rem' }}>
-                  {mode.icon}
+            <MenuItem value="">All Categories</MenuItem>
+            {categories.map(category => (
+              <MenuItem key={category.id} value={category.id}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      backgroundColor: category.color,
+                      border: 1,
+                      borderColor: `${category.color}50`
+                    }}
+                  />
+                  <span>{category.name}</span>
                 </Box>
-                {mode.label}
               </MenuItem>
             ))}
           </TextField>
-        </Stack>
-
-        {/* Second Row: Amount Range and Date Range */}
-        <Box sx={{ 
-          p: 2, 
-          bgcolor: 'background.default',
-          borderRadius: 1,
-          border: '1px solid',
-          borderColor: 'divider'
-        }}>
-          <Stack spacing={2}>
-            {/* Amount Range */}
-            <Box>
-              <Typography 
-                variant="subtitle2" 
-                color="text.secondary" 
-                gutterBottom
-                sx={{ ml: 1 }}
-              >
-                Amount Range
-              </Typography>
-              <Stack 
-                direction="row" 
-                spacing={2} 
-                sx={{ width: '100%' }}
-              >
-                <TextField
-                  name="minAmount"
-                  placeholder="Min"
-                  size="small"
-                  value={localFilters.minAmount || ''}
-                  onChange={handleNumericInput}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        ₹
-                      </InputAdornment>
-                    ),
-                  }}
-                  disabled={disabled}
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  name="maxAmount"
-                  placeholder="Max"
-                  size="small"
-                  value={localFilters.maxAmount || ''}
-                  onChange={handleNumericInput}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        ₹
-                      </InputAdornment>
-                    ),
-                  }}
-                  disabled={disabled}
-                  sx={{ flex: 1 }}
-                />
-              </Stack>
-            </Box>
-
-            {/* Date Range */}
-            <Box>
-              <Typography 
-                variant="subtitle2" 
-                color="text.secondary" 
-                gutterBottom
-                sx={{ ml: 1 }}
-              >
-                Date Range
-              </Typography>
-              <Stack 
-                direction={{ xs: 'column', sm: 'row' }} 
-                spacing={2}
-              >
-                <TextField
-                  name="startDate"
-                  type="date"
-                  size="small"
-                  value={localFilters.startDate}
-                  onChange={handleDateChange}
-                  InputLabelProps={{ shrink: true }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <CalendarTodayIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: 1 }}
-                  disabled={disabled}
-                />
-                <TextField
-                  name="endDate"
-                  type="date"
-                  size="small"
-                  value={localFilters.endDate}
-                  onChange={handleDateChange}
-                  InputLabelProps={{ shrink: true }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <CalendarTodayIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: 1 }}
-                  disabled={disabled}
-                />
-              </Stack>
-            </Box>
-          </Stack>
         </Box>
 
-        {/* Action Buttons */}
-        <Stack 
-          direction="row" 
-          spacing={2} 
-          justifyContent="flex-end"
-          sx={{ 
-            pt: 2,
-            borderTop: 1,
-            borderColor: 'divider'
+        {/* Payment Mode Select */}
+        <TextField
+          select
+          name="paymentMode"
+          label="Payment Mode"
+          size="small"
+          value={localFilters.paymentMode}
+          onChange={handleChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <PaymentIcon color="action" />
+              </InputAdornment>
+            ),
           }}
+          sx={{ 
+            flex: 1,
+            minWidth: { xs: '100%', sm: 150 }
+          }}
+          disabled={disabled}
         >
-          <Button
-            startIcon={<FilterAltOffIcon />}
-            onClick={handleReset}
-            size="medium"
-            disabled={disabled || isLoading}
-            color="inherit"
-            sx={{ minWidth: 100 }}
-          >
-            Reset
-          </Button>
-          <LoadingButton
-            variant="contained"
-            startIcon={<FilterListIcon />}
-            onClick={handleApplyFilters}
-            loading={isLoading}
+          <MenuItem value="">All Payment Modes</MenuItem>
+          {PAYMENT_MODES.map(mode => (
+            <MenuItem 
+              key={mode.value} 
+              value={mode.value}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                py: 1
+              }}
+            >
+              <Box component="span" sx={{ fontSize: '1.2rem' }}>
+                {mode.icon}
+              </Box>
+              {mode.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
+      <Stack 
+        direction={{ xs: 'column', sm: 'row' }} 
+        spacing={{ xs: 1.5, sm: 2 }}
+      >
+        {/* Date Range Fields */}
+        <Stack 
+          direction={{ xs: 'column', sm: 'row' }} 
+          spacing={{ xs: 1.5, sm: 2 }}
+          sx={{ flex: 2 }}
+        >
+          <TextField // Start Date
+            name="startDate"
+            type="date"
+            size="small"
+            value={localFilters.startDate}
+            onChange={handleDateChange}
+            InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <CalendarTodayIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            fullWidth
             disabled={disabled}
-          >
-            Apply Filters
-          </LoadingButton>
+          />
+          <TextField // End Date
+            name="endDate"
+            type="date"
+            size="small"
+            value={localFilters.endDate}
+            onChange={handleDateChange}
+            InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <CalendarTodayIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            fullWidth
+            disabled={disabled}
+          />
         </Stack>
+
+        {/* Amount Range Fields */}
+        <Stack 
+          direction={{ xs: 'column', sm: 'row' }} 
+          spacing={{ xs: 1.5, sm: 2 }}
+          sx={{ flex: 1 }}
+        >
+          <TextField // Min Amount
+            name="minAmount"
+            placeholder="Min"
+            size="small"
+            value={localFilters.minAmount || ''}
+            onChange={handleNumericInput}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  ₹
+                </InputAdornment>
+              ),
+            }}
+            fullWidth
+            disabled={disabled}
+          />
+          <TextField // Max Amount
+            name="maxAmount"
+            placeholder="Max"
+            size="small"
+            value={localFilters.maxAmount || ''}
+            onChange={handleNumericInput}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  ₹
+                </InputAdornment>
+              ),
+            }}
+            fullWidth
+            disabled={disabled}
+          />
+        </Stack>
+      </Stack>
+
+      <Stack 
+        direction="row" 
+        spacing={1}
+        sx={{ 
+          borderTop: 1,
+          borderColor: 'divider',
+          pt: { xs: 1.5, sm: 2 },
+          mt: { xs: 0.5, sm: 1 },
+          position: { xs: 'sticky', sm: 'static' },
+          bottom: { xs: 0, sm: 'auto' },
+          bgcolor: 'background.paper',
+          zIndex: 1,
+        }}
+      >
+        <Button
+          fullWidth
+          variant="outlined"
+          onClick={handleReset}
+          startIcon={<FilterAltOffIcon />}
+          disabled={disabled}
+          sx={{ minHeight: { xs: 45, sm: 'auto' } }}
+        >
+          Reset
+        </Button>
+        <LoadingButton
+          fullWidth
+          variant="contained"
+          onClick={handleApplyFilters}
+          loading={isLoading}
+          startIcon={<FilterListIcon />}
+          disabled={disabled}
+          sx={{ minHeight: { xs: 45, sm: 'auto' } }}
+        >
+          Apply Filters
+        </LoadingButton>
       </Stack>
     </Paper>
   );

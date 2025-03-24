@@ -7,6 +7,7 @@ import MonthlyTrends from './components/MonthlyTrends';
 import QuickActions from './components/QuickActions';
 import MonthlyStats from './components/MonthlyStats';
 import { Stack } from '@mui/material';
+import FinancialInsights from './components/FinancialInsights';
 
 const Dashboard: React.FC = () => {
   return (
@@ -17,11 +18,11 @@ const Dashboard: React.FC = () => {
           <OverviewCards />
         </Grid>
 
-        {/* Quick Actions */}
+        {/* Quick Actions and Insights */}
         <Grid item xs={12} md={4}>
           <Stack spacing={3}>
             <QuickActions />
-            <MonthlyStats />
+            <FinancialInsights />
           </Stack>
         </Grid>
 

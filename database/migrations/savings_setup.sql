@@ -1,4 +1,6 @@
--- Enable UUID extension if not already enabled
+-- Setup script for savings tables and functions
+
+-- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create main savings table
@@ -8,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.savings (
     name TEXT NOT NULL,
     target_amount NUMERIC NOT NULL CHECK (target_amount > 0),
     current_amount NUMERIC NOT NULL DEFAULT 0 CHECK (current_amount >= 0),
+    initial_amount NUMERIC NOT NULL DEFAULT 0 CHECK (initial_amount >= 0),
     type TEXT NOT NULL,
     priority TEXT NOT NULL,
     deadline TIMESTAMPTZ,
@@ -15,6 +18,24 @@ CREATE TABLE IF NOT EXISTS public.savings (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Add initial_amount column if not exists
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'savings' 
+        AND column_name = 'initial_amount'
+    ) THEN
+        ALTER TABLE public.savings 
+        ADD COLUMN initial_amount NUMERIC NOT NULL DEFAULT 0 
+        CHECK (initial_amount >= 0);
+    END IF;
+END $$;
+
+-- Refresh schema cache
+NOTIFY pgrst, 'reload schema';
 
 -- Create savings history table
 CREATE TABLE IF NOT EXISTS public.savings_history (
@@ -27,27 +48,10 @@ CREATE TABLE IF NOT EXISTS public.savings_history (
     FOREIGN KEY (goal_id) REFERENCES public.savings(id) ON DELETE CASCADE
 );
 
--- Create savings milestones table
-CREATE TABLE IF NOT EXISTS public.savings_milestones (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    goal_id UUID NOT NULL,
-    title TEXT NOT NULL,
-    target_amount NUMERIC NOT NULL CHECK (target_amount > 0),
-    deadline TIMESTAMPTZ,
-    description TEXT,
-    achieved BOOLEAN DEFAULT false,
-    achieved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    FOREIGN KEY (goal_id) REFERENCES public.savings(id) ON DELETE CASCADE
-);
-
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_savings_user_id ON public.savings(user_id);
 CREATE INDEX IF NOT EXISTS idx_savings_history_goal_id ON public.savings_history(goal_id);
 CREATE INDEX IF NOT EXISTS idx_savings_history_date ON public.savings_history(date);
-CREATE INDEX IF NOT EXISTS idx_savings_milestones_goal_id ON public.savings_milestones(goal_id);
-CREATE INDEX IF NOT EXISTS idx_savings_milestones_achieved ON public.savings_milestones(achieved);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION trigger_set_timestamp()
@@ -64,28 +68,31 @@ CREATE TRIGGER set_timestamp_savings
     FOR EACH ROW
     EXECUTE FUNCTION trigger_set_timestamp();
 
-CREATE TRIGGER set_timestamp_milestones
-    BEFORE UPDATE ON public.savings_milestones
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_set_timestamp();
-
--- Create goal progress calculation function
-CREATE OR REPLACE FUNCTION calculate_goal_progress(target_goal_id UUID)
-RETURNS NUMERIC
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+-- Function for calculating goal progress
+CREATE OR REPLACE FUNCTION calculate_goal_progress(goal_id UUID)
+RETURNS NUMERIC AS $$
 BEGIN
-    RETURN COALESCE(
-        (SELECT SUM(sh.amount)
-         FROM public.savings_history sh
-         WHERE sh.goal_id = target_goal_id),
-        0
-    );
+  -- Calculate total contributions
+  RETURN COALESCE(
+    (SELECT SUM(amount)
+     FROM savings_history
+     WHERE savings_history.goal_id = calculate_goal_progress.goal_id),
+    0
+  );
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Add RLS policies
+
+-- Drop existing policies first
+DROP POLICY IF EXISTS "Users can view their own savings" ON public.savings;
+DROP POLICY IF EXISTS "Users can create their own savings" ON public.savings;
+DROP POLICY IF EXISTS "Users can update their own savings" ON public.savings;
+DROP POLICY IF EXISTS "Users can delete their own savings" ON public.savings;
+
+DROP POLICY IF EXISTS "Users can view their own savings history" ON public.savings_history;
+DROP POLICY IF EXISTS "Users can insert their own savings history" ON public.savings_history;
+DROP POLICY IF EXISTS "Users can delete their own savings history" ON public.savings_history;
 
 -- Savings table policies
 ALTER TABLE public.savings ENABLE ROW LEVEL SECURITY;
@@ -130,41 +137,6 @@ CREATE POLICY "Users can delete their own savings history"
     USING (EXISTS (
         SELECT 1 FROM public.savings s
         WHERE s.id = savings_history.goal_id
-        AND s.user_id = auth.uid()
-    ));
-
--- Savings milestones policies
-ALTER TABLE public.savings_milestones ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own milestones"
-    ON public.savings_milestones FOR SELECT
-    USING (EXISTS (
-        SELECT 1 FROM public.savings s
-        WHERE s.id = savings_milestones.goal_id
-        AND s.user_id = auth.uid()
-    ));
-
-CREATE POLICY "Users can insert their own milestones"
-    ON public.savings_milestones FOR INSERT
-    WITH CHECK (EXISTS (
-        SELECT 1 FROM public.savings s
-        WHERE s.id = savings_milestones.goal_id
-        AND s.user_id = auth.uid()
-    ));
-
-CREATE POLICY "Users can update their own milestones"
-    ON public.savings_milestones FOR UPDATE
-    USING (EXISTS (
-        SELECT 1 FROM public.savings s
-        WHERE s.id = savings_milestones.goal_id
-        AND s.user_id = auth.uid()
-    ));
-
-CREATE POLICY "Users can delete their own milestones"
-    ON public.savings_milestones FOR DELETE
-    USING (EXISTS (
-        SELECT 1 FROM public.savings s
-        WHERE s.id = savings_milestones.goal_id
         AND s.user_id = auth.uid()
     ));
 

@@ -1,4 +1,4 @@
-export type NotificationType = 'goal' | 'expense' | 'system';
+export type NotificationType = 'goal' | 'expense';
 export type NotificationPriority = 'high' | 'medium' | 'low';
 export type NotificationStatus = 'unread' | 'read' | 'archived';
 
@@ -22,18 +22,10 @@ export interface NotificationTrigger {
   priority: NotificationPriority;
 }
 
-interface TriggerCondition {
-  goalNearDeadline?: number;
-  goalProgressBelow?: number;
-  goalAchieved?: boolean;
-  milestoneAchieved?: boolean;
-  milestoneNearDeadline?: number;
-  expenseAbove?: number;
-  monthlySpendingExceeds?: number;
-  categorySpendingExceeds?: {
-    category_id: string;
-    amount: number;
-  };
+export interface TriggerCondition {
+  goalReached?: boolean;
+  deadlineApproaching?: number;
+  spendingThreshold?: number;
 }
 
 export interface INotificationPreferences {

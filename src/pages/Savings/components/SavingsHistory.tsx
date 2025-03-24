@@ -1,16 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Paper, Typography, Stack, Box, Chip,
-  IconButton, List, ListItem, ListItemText,
+  Typography, Stack, Box, Chip,
+  List, ListItem, ListItemText,
   LinearProgress, Button, TablePagination,
-  Checkbox, Fade, Alert,
-  Menu, MenuItem
+  Checkbox
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import { ISavingsGoal, ISavingsHistory, ISavingsHistoryFormData, ISavingsMilestone, ISavingsMilestoneFormData } from '../../../types/savings.types';
+import { ISavingsGoal, ISavingsHistoryFormData } from '../../../types/savings.types';
 import { useSavings } from '../../../contexts/SavingsContext';
 import { formatCurrency } from '../../../utils/currency';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
@@ -20,30 +16,23 @@ import ContributionFilters, { ContributionFilters as IContributionFilters } from
 import TablePaginationActions from '../../../components/shared/TablePaginationActions';
 import BulkActionsToolbar from './BulkActionsToolbar';
 import ContributionChart from '../../../components/shared/ContributionChart';
-import SavingsMilestones from './SavingsMilestones';
-import MilestoneAnalytics from '../../../components/shared/MilestoneAnalytics';
-import AchievementCelebration from '../../../components/shared/AchievementCelebration';
 
 interface SavingsHistoryProps {
   goal: ISavingsGoal;
 }
 
-const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
+export const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
   const { 
     history, 
     loadingHistory, 
     fetchHistory, 
     addContribution,
-    milestones,  // Remove the default empty array
-    addMilestone,
-    updateMilestone,
-    deleteMilestone,
-    fetchMilestones,
-    deleteContribution // Add this
+    deleteContribution
   } = useSavings();
-  const goalHistory = history[goal.id] || [];
-  const goalMilestones = milestones[goal.id] || []; // Create a variable for goal's milestones
-
+  
+  // Create memoized goalHistory
+  const goalHistory = useMemo(() => history[goal.id] || [], [history, goal.id]);
+  
   const [filters, setFilters] = useState<IContributionFilters>({
     search: '',
     dateRange: {
@@ -59,11 +48,10 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
     filterType: 'all', // Add this property
   });
 
+  // Remove unused state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [selected, setSelected] = useState<string[]>([]);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [achievedMilestone, setAchievedMilestone] = useState<ISavingsMilestone | null>(null);
   const [openModal, setOpenModal] = useState(false);
 
   const filteredHistory = useMemo(() => {
@@ -145,28 +133,18 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
 
   React.useEffect(() => {
     fetchHistory(goal.id);
-    fetchMilestones(goal.id); // Add this to fetch milestones
-  }, [goal.id, fetchHistory, fetchMilestones]);
+  }, [goal.id, fetchHistory]);
 
   const handleAddContribution = async (data: ISavingsHistoryFormData) => {
     try {
       await addContribution(goal.id, data);
-      
-      // Check if any milestone was just achieved
-      const latestMilestone = goalMilestones
-        .find(m => !m.achieved && m.target_amount <= goal.current_amount + data.amount);
-      
-      if (latestMilestone) {
-        setAchievedMilestone(latestMilestone);
-      }
-      
       setOpenModal(false);
     } catch (error) {
       console.error('Failed to add contribution:', error);
     }
   };
 
-  const handleChangePage = (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+  const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
 
@@ -216,53 +194,20 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
     }
   };
 
-  const handleUpdateMilestone = async (id: string, data: ISavingsMilestoneFormData) => {
-    try {
-      await updateMilestone(id, data);
-    } catch (error) {
-      console.error('Failed to update milestone:', error);
-    }
-  };
-
-  const handleDeleteMilestone = async (id: string) => {
-    try {
-      await deleteMilestone(id);
-    } catch (error) {
-      console.error('Failed to delete milestone:', error);
-    }
-  };
-
   if (loadingHistory) {
     return <LinearProgress />;
   }
 
   return (
     <Stack spacing={3}>
-      <ContributionSummary
+      <ContributionSummary 
         history={goalHistory}
         targetAmount={goal.target_amount}
         currentAmount={goal.current_amount}
       />
 
-      <SavingsMilestones
-        goal={goal}
-        milestones={goalMilestones}
-        history={goalHistory} // Add this prop
-        onAddMilestone={async (data) => {
-          await addMilestone(goal.id, data);
-        }}
-        onUpdateMilestone={handleUpdateMilestone}
-        onDeleteMilestone={handleDeleteMilestone}
-      />
-
-      <MilestoneAnalytics
-        milestones={goalMilestones}
-        currentAmount={goal.current_amount}
-      />
-
       <ContributionChart 
-        history={goalHistory} 
-        milestones={goalMilestones}
+        history={goalHistory}
       />
 
       <ContributionFilters
@@ -274,7 +219,7 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
           amountRange: { min: '', max: '' },
           sortBy: 'date',
           sortOrder: 'desc',
-          filterType: 'all', // Add this property
+          filterType: 'all',
         })}
         loading={loadingHistory}
       />
@@ -410,11 +355,6 @@ const SavingsHistory: React.FC<SavingsHistoryProps> = ({ goal }) => {
         open={openModal}
         onClose={() => setOpenModal(false)}
         onSubmit={handleAddContribution}
-      />
-
-      <AchievementCelebration
-        milestone={achievedMilestone}
-        onClose={() => setAchievedMilestone(null)}
       />
     </Stack>
   );

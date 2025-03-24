@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { ISavingsGoal, ISavingsFormData, ISavingsHistory, ISavingsHistoryFormData, ISavingsMilestone, ISavingsMilestoneFormData } from '../types/savings.types';
+import { ISavingsGoal, ISavingsFormData, ISavingsHistory, ISavingsHistoryFormData } from '../types/savings.types';
 import { savingsService } from '../services/savings.service';
 import { useAuth } from './AuthContext';
 import { notificationTriggerService } from '../services/notificationTrigger.service';
@@ -18,12 +18,6 @@ interface SavingsContextType {
   loadingHistory: boolean;
   addContribution: (goalId: string, data: ISavingsHistoryFormData) => Promise<void>;
   fetchHistory: (goalId: string) => Promise<void>;
-  milestones: Record<string, ISavingsMilestone[]>;
-  loadingMilestones: boolean;
-  fetchMilestones: (goalId: string) => Promise<void>;
-  addMilestone: (goalId: string, data: ISavingsMilestoneFormData) => Promise<void>;
-  updateMilestone: (id: string, data: Partial<ISavingsMilestoneFormData>) => Promise<void>;
-  deleteMilestone: (id: string) => Promise<void>;
   deleteContribution: (goalId: string, contributionId: string) => Promise<void>;
 }
 
@@ -35,8 +29,6 @@ export const SavingsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<Record<string, ISavingsHistory[]>>({});
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [milestones, setMilestones] = useState<Record<string, ISavingsMilestone[]>>({});
-  const [loadingMilestones, setLoadingMilestones] = useState(false);
   const { authState } = useAuth();
 
   const fetchGoals = useCallback(async () => {
@@ -132,41 +124,22 @@ export const SavingsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLoading(true);
     try {
       const contribution = await savingsService.addContribution(goalId, data);
+      
+      // Update history state
       setHistory(prev => ({
         ...prev,
         [goalId]: [...(prev[goalId] || []), contribution]
       }));
 
-      // Get updated goal
-      const { data: updatedGoals } = await supabase
+      // Fetch updated goal to get new current_amount
+      const { data: updatedGoal } = await supabase
         .from('savings')
-        .select()
+        .select('*')
         .eq('id', goalId)
-        .limit(1);
-      
-      const updatedGoal = updatedGoals?.[0];
+        .single();
 
       if (updatedGoal) {
-        const achievedMilestones = await savingsService.checkMilestoneAchievement(
-          goalId,
-          updatedGoal.current_amount
-        );
-
-        // Update goals state
         setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g));
-
-        // Handle notifications for achieved milestones
-        if (achievedMilestones.length > 0) {
-          const preferences = await notificationPreferencesService.getPreferences(authState.user.id);
-          
-          for (const milestone of achievedMilestones) {
-            await notificationTriggerService.evaluateMilestoneAchievement(
-              milestone,
-              updatedGoal,
-              preferences
-            );
-          }
-        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -199,75 +172,6 @@ export const SavingsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const fetchMilestones = useCallback(async (goalId: string) => {
-    if (!authState.user?.id) return;
-    
-    setLoadingMilestones(true);
-    try {
-      const data = await savingsService.getMilestones(goalId);
-      setMilestones(prev => ({
-        ...prev,
-        [goalId]: data || [] // Ensure we always have an array
-      }));
-    } catch (err: any) {
-      setError(err.message);
-      // Initialize empty array on error to prevent undefined
-      setMilestones(prev => ({
-        ...prev,
-        [goalId]: []
-      }));
-    } finally {
-      setLoadingMilestones(false);
-    }
-  }, [authState.user?.id]);
-
-  const addMilestone = async (goalId: string, data: ISavingsMilestoneFormData) => {
-    try {
-      const newMilestone = await savingsService.createMilestone(goalId, data);
-      setMilestones(prev => ({
-        ...prev,
-        [goalId]: [...(prev[goalId] || []), newMilestone]
-      }));
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const updateMilestone = async (id: string, data: Partial<ISavingsMilestoneFormData>) => {
-    try {
-      const updatedMilestone = await savingsService.updateMilestone(id, data);
-      setMilestones(prev => {
-        const goalId = updatedMilestone.goal_id;
-        return {
-          ...prev,
-          [goalId]: prev[goalId].map(m => 
-            m.id === id ? updatedMilestone : m
-          )
-        };
-      });
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const deleteMilestone = async (id: string) => {
-    try {
-      await savingsService.deleteMilestone(id);
-      setMilestones(prev => {
-        const newMilestones = { ...prev };
-        Object.keys(newMilestones).forEach(goalId => {
-          newMilestones[goalId] = newMilestones[goalId].filter(m => m.id !== id);
-        });
-        return newMilestones;
-      });
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
   return (
     <SavingsContext.Provider value={{
       goals,
@@ -281,12 +185,6 @@ export const SavingsProvider: React.FC<{ children: React.ReactNode }> = ({ child
       loadingHistory,
       addContribution,
       fetchHistory,
-      milestones,
-      loadingMilestones,
-      fetchMilestones,
-      addMilestone,
-      updateMilestone,
-      deleteMilestone,
       deleteContribution
     }}>
       {children}

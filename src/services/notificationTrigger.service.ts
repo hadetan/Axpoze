@@ -1,6 +1,6 @@
-import { NotificationTrigger, INotificationPreferences } from '../types/notification.types';
+import { NotificationType, NotificationPriority, NotificationTrigger, TriggerCondition, INotificationPreferences } from '../types/notification.types';
 import { notificationService } from './notification.service';
-import { ISavingsGoal, ISavingsMilestone } from '../types/savings.types';
+import { ISavingsGoal } from '../types/savings.types';
 import { IExpense } from '../types/expense.types';
 import { formatCurrency } from '../utils/currency';
 
@@ -9,14 +9,22 @@ export const notificationTriggerService = {
     goal: ISavingsGoal, 
     preferences: INotificationPreferences
   ): Promise<void> {
-    if (!preferences.goal_deadline_reminder && !preferences.goal_progress_alert) {
-      return;
-    }
+    if (!preferences.goal_progress_alert) return;
 
     const triggers: NotificationTrigger[] = [];
 
-    // Deadline trigger
-    if (preferences.goal_deadline_reminder && goal.deadline) {
+    // Check if goal target is reached
+    if (goal.current_amount >= goal.target_amount) {
+      triggers.push({
+        type: 'goal',
+        condition: { goalReached: true } as TriggerCondition,
+        message: `Goal reached: ${goal.name} (${formatCurrency(goal.target_amount)})`,
+        priority: 'high' as NotificationPriority
+      });
+    }
+
+    // Check if goal deadline is approaching
+    if (goal.deadline) {
       const daysUntilDeadline = Math.ceil(
         (new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -24,30 +32,9 @@ export const notificationTriggerService = {
       if (daysUntilDeadline <= preferences.deadline_days_threshold && daysUntilDeadline > 0) {
         triggers.push({
           type: 'goal',
-          condition: { goalNearDeadline: daysUntilDeadline },
-          message: `${goal.name} deadline is approaching! ${daysUntilDeadline} days left`,
+          condition: { deadlineApproaching: daysUntilDeadline } as TriggerCondition,
+          message: `Goal deadline approaching: ${goal.name}`,
           priority: daysUntilDeadline <= 3 ? 'high' : 'medium'
-        });
-      }
-    }
-
-    // Progress trigger
-    if (preferences.goal_progress_alert && goal.deadline) {
-      const progress = (goal.current_amount / goal.target_amount) * 100;
-      const totalDays = Math.ceil(
-        (new Date(goal.deadline).getTime() - new Date(goal.created_at).getTime()) / (1000 * 60 * 60 * 24)
-      );
-      const remainingDays = Math.ceil(
-        (new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-      );
-      const expectedProgress = ((totalDays - remainingDays) / totalDays) * 100;
-
-      if (progress < expectedProgress - preferences.progress_threshold) {
-        triggers.push({
-          type: 'goal',
-          condition: { goalProgressBelow: preferences.progress_threshold },
-          message: `You're falling behind on ${goal.name}`,
-          priority: 'medium'
         });
       }
     }
@@ -56,12 +43,12 @@ export const notificationTriggerService = {
     for (const trigger of triggers) {
       await notificationService.createNotification({
         user_id: goal.user_id,
-        title: trigger.type === 'goal' ? 'Goal Alert' : 'Notification',
+        title: 'Goal Update',
         message: trigger.message,
-        type: trigger.type,
-        priority: trigger.priority,
+        type: trigger.type as NotificationType,
+        priority: trigger.priority as NotificationPriority,
         status: 'unread',
-        action_url: '/savings'
+        action_url: `/savings?goal=${goal.id}`
       });
     }
   },
@@ -98,55 +85,6 @@ export const notificationTriggerService = {
         priority: 'high',
         status: 'unread',
         action_url: '/expenses'
-      });
-    }
-  },
-
-  async evaluateMilestoneAchievement(
-    milestone: ISavingsMilestone,
-    goal: ISavingsGoal,
-    preferences: INotificationPreferences
-  ): Promise<void> {
-    if (!preferences.goal_progress_alert) return;
-
-    const triggers: NotificationTrigger[] = [];
-
-    // Check if milestone was just achieved
-    if (milestone.achieved && !milestone.achieved_at) {
-      triggers.push({
-        type: 'goal',
-        condition: { milestoneAchieved: true },
-        message: `Milestone achieved: ${milestone.title} (${formatCurrency(milestone.target_amount)})`,
-        priority: 'high'
-      });
-    }
-
-    // Check if milestone deadline is approaching
-    if (milestone.deadline && !milestone.achieved) {
-      const daysUntilDeadline = Math.ceil(
-        (new Date(milestone.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      if (daysUntilDeadline <= preferences.deadline_days_threshold && daysUntilDeadline > 0) {
-        triggers.push({
-          type: 'goal',
-          condition: { milestoneNearDeadline: daysUntilDeadline },
-          message: `Milestone deadline approaching: ${milestone.title}`,
-          priority: daysUntilDeadline <= 3 ? 'high' : 'medium'
-        });
-      }
-    }
-
-    // Create notifications for triggered conditions
-    for (const trigger of triggers) {
-      await notificationService.createNotification({
-        user_id: goal.user_id,
-        title: 'Milestone Update',
-        message: trigger.message,
-        type: trigger.type,
-        priority: trigger.priority,
-        status: 'unread',
-        action_url: `/savings?goal=${goal.id}`
       });
     }
   }

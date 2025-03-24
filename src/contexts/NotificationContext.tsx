@@ -50,9 +50,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     {
       type: 'goal',
       condition: {
-        goalNearDeadline: 7,
-        goalProgressBelow: 20,
-        goalAchieved: true
+        deadlineApproaching: 7,
+        spendingThreshold: 20 // Was goalProgressBelow before
       },
       message: '', // Will be dynamically set
       priority: 'medium'
@@ -60,7 +59,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     {
       type: 'expense',
       condition: {
-        monthlySpendingExceeds: 120, // 120% of average
+        spendingThreshold: 120 // Was monthlySpendingExceeds before
       },
       message: '', // Will be dynamically set
       priority: 'high'
@@ -72,7 +71,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!userId) return;
 
     const deadlineTrigger = defaultTriggers.find(
-      t => t.type === 'goal' && t.condition.goalNearDeadline
+      t => t.type === 'goal' && t.condition.deadlineApproaching
     );
 
     if (!deadlineTrigger) return;
@@ -84,7 +83,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         (new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (daysUntilDeadline <= deadlineTrigger.condition.goalNearDeadline! && daysUntilDeadline > 0) {
+      if (daysUntilDeadline <= deadlineTrigger.condition.deadlineApproaching! && daysUntilDeadline > 0) {
         const progressPercentage = (goal.current_amount / goal.target_amount) * 100;
         createNotification({
           user_id: userId,
@@ -97,14 +96,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
       }
     });
-  }, [goals, getUserId]);
+  }, [goals, getUserId, defaultTriggers, createNotification]);
 
   const checkGoalProgress = useCallback(() => {
     const userId = getUserId();
     if (!userId) return;
 
     const progressTrigger = defaultTriggers.find(
-      t => t.type === 'goal' && t.condition.goalProgressBelow !== undefined
+      t => t.type === 'goal' && t.condition.spendingThreshold
     );
 
     if (!progressTrigger) return;
@@ -112,7 +111,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     goals.forEach(goal => {
       const progress = (goal.current_amount / goal.target_amount) * 100;
 
-      if (progress >= 100 && defaultTriggers.find(t => t.condition.goalAchieved)) {
+      if (progress >= 100) {
         createNotification({
           user_id: userId,
           title: 'Goal Achieved! 🎉',
@@ -122,36 +121,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           status: 'unread',
           action_url: '/savings'
         });
-      } else if (goal.deadline) {
-        const totalDays = Math.ceil(
-          (new Date(goal.deadline).getTime() - new Date(goal.created_at).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const remainingDays = Math.ceil(
-          (new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const expectedProgress = ((totalDays - remainingDays) / totalDays) * 100;
-
-        if (progress < expectedProgress - progressTrigger.condition.goalProgressBelow!) {
-          createNotification({
-            user_id: userId,
-            title: 'Goal Progress Alert',
-            message: `You're falling behind on ${goal.name}. Consider increasing your savings to stay on track.`,
-            type: 'goal',
-            priority: 'medium',
-            status: 'unread',
-            action_url: '/savings'
-          });
-        }
       }
     });
-  }, [goals, getUserId]);
+  }, [goals, getUserId, defaultTriggers, createNotification]);
 
   const checkMonthlySpending = useCallback(() => {
     const userId = getUserId();
     if (!userId || !expenses.length) return;
 
     const spendingTrigger = defaultTriggers.find(
-      t => t.type === 'expense' && t.condition.monthlySpendingExceeds
+      t => t.type === 'expense' && t.condition.spendingThreshold
     );
 
     if (!spendingTrigger) return;
@@ -168,7 +147,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const totalSpent = monthlyExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const averageSpentLastMonth = 50000;
 
-    if (totalSpent > averageSpentLastMonth * (spendingTrigger.condition.monthlySpendingExceeds! / 100)) {
+    if (totalSpent > averageSpentLastMonth * (spendingTrigger.condition.spendingThreshold! / 100)) {
       createNotification({
         user_id: userId,
         title: 'High Monthly Spending',
@@ -179,7 +158,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         action_url: '/expenses'
       });
     }
-  }, [expenses, getUserId]);
+  }, [expenses, getUserId, defaultTriggers, createNotification]);
 
   const fetchNotifications = useCallback(async () => {
     const userId = getUserId();

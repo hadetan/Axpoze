@@ -40,7 +40,7 @@ const NotificationPreferences: React.FC = () => {
       monthly_spending_alert: true,
       spending_threshold: 120,
       email_notifications: true,
-      notification_types: ['goal', 'expense', 'system'],
+      notification_types: ['goal', 'expense'], // Remove 'system'
     },
     validationSchema,
     onSubmit: async (values) => {
@@ -92,7 +92,7 @@ const NotificationPreferences: React.FC = () => {
     };
 
     loadPreferences();
-  }, [authState.user?.id]);
+  }, [authState.user?.id, formik]); // Add formik to dependencies
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -152,7 +152,6 @@ const NotificationPreferences: React.FC = () => {
               >
                 <MenuItem value="goal">Goal Updates</MenuItem>
                 <MenuItem value="expense">Expense Alerts</MenuItem>
-                <MenuItem value="system">System Notifications</MenuItem>
               </TextField>
             </Stack>
           </Box>

@@ -38,22 +38,3 @@ export interface ISavingsHistoryFormData {
   date: string;
   notes?: string;
 }
-
-export interface ISavingsMilestone {
-  id: string;
-  goal_id: string;
-  target_amount: number;
-  deadline?: string;
-  title: string;
-  description?: string;
-  achieved: boolean;
-  created_at: string;
-  achieved_at?: string;
-}
-
-export interface ISavingsMilestoneFormData {
-  target_amount: number;
-  deadline?: string;
-  title: string;
-  description?: string;
-}

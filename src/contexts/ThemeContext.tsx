@@ -18,7 +18,10 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mode, setMode] = useState<ThemeMode>('dark');
+  const [mode, setMode] = useState<ThemeMode>(() => {
+    // Initialize from localStorage or default to 'dark'
+    return (localStorage.getItem('themeMode') as ThemeMode) || 'dark';
+  });
   const { authState } = useAuth();
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try {
           const preference = await themeService.getThemePreference(authState.user.id);
           setMode(preference);
+          localStorage.setItem('themeMode', preference);
         } catch (error) {
           console.error('Failed to load theme preference:', error);
         }
@@ -39,12 +43,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleTheme = async () => {
     const newMode = mode === 'light' ? 'dark' : 'light';
     setMode(newMode);
+    localStorage.setItem('themeMode', newMode);
 
     if (authState.user?.id) {
       try {
         await themeService.updateThemePreference(authState.user.id, newMode);
       } catch (error) {
         console.error('Failed to update theme preference:', error);
+        // Revert changes if update fails
+        setMode(mode);
+        localStorage.setItem('themeMode', mode);
       }
     }
   };

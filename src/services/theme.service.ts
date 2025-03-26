@@ -7,17 +7,28 @@ export const themeService = {
       .update({ theme_preference: theme })
       .eq('id', userId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error updating theme preference:', error);
+      throw new Error('Failed to update theme preference');
+    }
   },
 
   async getThemePreference(userId: string): Promise<'light' | 'dark'> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('theme_preference')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('theme_preference')
+        .eq('id', userId)
+        .single();
 
-    if (error) throw error;
-    return data?.theme_preference || 'dark';
+      if (error) throw error;
+
+      // Return the stored preference or fall back to the localStorage value or 'dark'
+      return data?.theme_preference || localStorage.getItem('themeMode') as 'light' | 'dark' || 'dark';
+    } catch (error) {
+      console.error('Error fetching theme preference:', error);
+      // Fall back to localStorage or default
+      return localStorage.getItem('themeMode') as 'light' | 'dark' || 'dark';
+    }
   }
 };

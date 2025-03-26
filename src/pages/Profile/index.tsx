@@ -8,6 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useExpense } from '../../contexts/ExpenseContext';
 import ThemeSwitch from '../../components/settings/ThemeSwitch';
 import { colors } from '../../theme/colors';
+import PreferencesTab from './components/PreferencesTab';
+import AccountSettings from './components/AccountSettings';
 
 const Profile: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState(0);
@@ -127,15 +129,8 @@ const Profile: React.FC = () => {
             transition: 'all 0.2s ease'
           }}>
             {activeTab === 0 && <CategorySettings />}
-            {activeTab === 1 && (
-              <Paper sx={{ 
-                p: { xs: 2, sm: 3 },
-                borderRadius: { xs: 1, sm: 2 }
-              }}>
-                <ThemeSwitch />
-              </Paper>
-            )}
-            {/* Add other settings panels here */}
+            {activeTab === 1 && <PreferencesTab />}
+            {activeTab === 2 && <AccountSettings />}
           </Box>
         </Grid>
       </Grid>

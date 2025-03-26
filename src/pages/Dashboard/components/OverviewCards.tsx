@@ -1,50 +1,19 @@
-import React from 'react';
-import { Grid, Paper, Typography, Box, Skeleton } from '@mui/material';
+import React, { useMemo } from 'react';
+import { Grid } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import SavingsIcon from '@mui/icons-material/Savings';
 import { useExpense } from '../../../contexts/ExpenseContext';
 import { useSavings } from '../../../contexts/SavingsContext';
 import { startOfMonth, endOfMonth } from 'date-fns';
-
-const OverviewCard = ({ title, amount, icon, color, loading = false }: any) => (
-  <Paper 
-    sx={{ 
-      p: { xs: 1.5, sm: 2 },
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: { xs: 1.5, sm: 2 }
-    }}
-  >
-    <Box sx={{ 
-      backgroundColor: `${color}15`, 
-      borderRadius: '50%', 
-      p: 1,
-      display: 'flex' 
-    }}>
-      {icon}
-    </Box>
-    <Box>
-      <Typography variant="body2" color="text.secondary">
-        {title}
-      </Typography>
-      {loading ? (
-        <Skeleton width={100} height={32} />
-      ) : (
-        <Typography variant="h6">
-          ₹{amount.toLocaleString()}
-        </Typography>
-      )}
-    </Box>
-  </Paper>
-);
+import OverviewCard from './OverviewCard';
 
 const OverviewCards: React.FC = () => {
   const { expenses, loading: expenseLoading } = useExpense();
   const { goals, history, loading: savingsLoading } = useSavings();
 
   // Calculate total monthly expenses
-  const currentMonthExpenses = React.useMemo(() => {
+  const currentMonthExpenses = useMemo(() => {
     if (!expenses.length) return 0;
     
     const start = startOfMonth(new Date());
@@ -59,13 +28,13 @@ const OverviewCards: React.FC = () => {
   }, [expenses]);
 
   // Calculate total savings from all goals
-  const totalSavings = React.useMemo(() => {
+  const totalSavings = useMemo(() => {
     if (!goals.length) return 0;
     return goals.reduce((sum, goal) => sum + goal.current_amount, 0);
   }, [goals]);
 
   // Calculate current month's savings contributions
-  const currentMonthSavings = React.useMemo(() => {
+  const currentMonthSavings = useMemo(() => {
     const start = startOfMonth(new Date());
     const end = endOfMonth(new Date());
 
@@ -80,7 +49,7 @@ const OverviewCards: React.FC = () => {
   }, [history]);
 
   // Calculate monthly income (expenses + savings)
-  const monthlyIncome = React.useMemo(() => {
+  const monthlyIncome = useMemo(() => {
     return Math.abs(currentMonthExpenses) + currentMonthSavings;
   }, [currentMonthExpenses, currentMonthSavings]);
 

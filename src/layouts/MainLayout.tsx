@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import NotificationBell from '../components/shared/NotificationBell';
 import { useNotification } from '../contexts/NotificationContext';
 import MobileBottomNav from '../components/layout/MobileBottomNav';
+import SplitText from '../components/shared/SplitText';
 
 const DRAWER_WIDTH = 240;
 
@@ -51,7 +52,7 @@ const MainLayout: React.FC = () => {
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Axpoze
+            <SplitText text="Axpoze" delay={100} />
           </Typography>
           <NotificationBell />
           <IconButton color="inherit" onClick={handleLogout}>
